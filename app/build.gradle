@@ -39,6 +39,12 @@ android {
     }
     kotlinOptions { jvmTarget = '17' }
     packaging { jniLibs { keepDebugSymbols += ['**/*.so'] } }
+    // Explicitly register the standard Android assets directory used by the runtime task.
+    sourceSets {
+        main {
+            assets.srcDirs = ['src/main/assets']
+        }
+    }
 }
 
 dependencies {
