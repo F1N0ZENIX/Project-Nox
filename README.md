@@ -31,7 +31,7 @@ Project Nox aims to bring a real Linux desktop environment to Android without re
 - Show/hide touchpad preference, saved between launches.
 - Portrait, landscape and automatic orientation actions.
 - Android soft-keyboard launch.
-- Automated APK compilation, GitHub Release publishing and generated changelog.
+- Bundled ARM64 PRoot runtime and Ubuntu Base 24.04 root filesystem (verified during build).\n- Offline first-run extraction and interactive Ubuntu shell for ARM64 Android.\n- Automated APK compilation, GitHub Release publishing and generated changelog.
 
 ## Download the latest APK
 
@@ -58,7 +58,11 @@ To encode a keystore file as Base64 on Linux, run `base64 -w 0 nox-release.keyst
 
 ## Ubuntu status
 
-The current release does **not** yet contain a runnable Ubuntu environment. A complete no-root Linux desktop requires an Android-compatible PRoot runtime, an ARM64 Ubuntu root filesystem, process/lifecycle management, and a graphics bridge (for example, a VNC/X server integration). Bundling only an Ubuntu root filesystem in the APK would not make it executable, and including a full desktop image would make the APK extremely large. These pieces must be implemented and tested before Nox can honestly claim to launch Ubuntu. The current setup screen is a status page, not a working installer.
+The 0.4 milestone integrates a real **Ubuntu Base 24.04 ARM64 shell** for ARM64 Android devices without root. The build downloads and verifies the pinned PRoot runtime components and the official Ubuntu Base archive, then packages them inside the APK. On first setup, Nox extracts Ubuntu locally, so the root filesystem does not need to be downloaded from inside the app. Allow at least 650 MB free for extraction.
+
+Open **Set up Ubuntu offline → Install Ubuntu offline**, then **Open Ubuntu terminal**. The terminal accepts Linux commands such as `id`, `uname -a`, and `apt-get update`. Internet access is needed only for commands that fetch packages or other network content.
+
+**Important limitation:** this milestone provides the Ubuntu command-line environment, not a finished graphical Linux desktop. XFCE display, an integrated X/VNC bridge, mouse/keyboard forwarding and audio still need to be implemented and tested. The bundled Ubuntu Base is minimal; graphical desktop packages are not preinstalled.
 
 ## Roadmap
 
@@ -69,10 +73,7 @@ The current release does **not** yet contain a runnable Ubuntu environment. A co
 - [x] Automatic Releases, APK attachment and generated release notes
 - [x] Increasing version codes for automated builds
 - [x] Reuse a persistent development signing key for automated builds
-- [ ] Bundle/build an Android-compatible ARM64 PRoot runtime
-- [ ] Ubuntu ARM64 userspace bootstrap and installation flow
-- [ ] Download/extract progress, cancellation and storage checks
-- [ ] Start/stop lifecycle for the Linux environment
+- [x] Bundle an Android-compatible ARM64 PRoot runtime in the APK\n- [x] Bundle Ubuntu Base 24.04 ARM64 in the APK and verify its checksum during build\n- [x] Offline Ubuntu extraction flow and interactive command-line terminal\n- [x] Start/stop lifecycle for the Ubuntu shell\n- [ ] Improve install cancellation and recovery from interrupted extraction
 - [ ] XFCE desktop display integration
 - [ ] Forward touch, mouse and keyboard input to Linux
 - [ ] Audio and desktop session testing
