@@ -2,7 +2,6 @@ package com.projectnox.app
 
 import android.content.Context
 import android.os.Build
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import java.io.BufferedInputStream
 import java.io.File
@@ -15,7 +14,7 @@ import java.nio.file.LinkOption
 
 /**
  * Offline-first Ubuntu Base installer and launcher for ARM64 Android.
- * Runtime binaries and the verified Ubuntu archive are embedded by the Gradle build task.
+ * Android's asset packaging expands .gz assets and stores this archive as ubuntu-base-arm64.tar.
  */
 object UbuntuRuntime {
     data class InstallResult(val success: Boolean, val message: String)
@@ -54,54 +53,52 @@ object UbuntuRuntime {
             val rootPath = root.toPath().toAbsolutePath().normalize()
             Files.createDirectories(rootPath)
             val bundledArchive = try {
-                assetManager.open("ubuntu-base-arm64.tar.gz")
+                assetManager.open("ubuntu-base-arm64.tar")
             } catch (e: IOException) {
-                throw IOException("O APK não contém ubuntu-base-arm64.tar.gz. Baixe a versão mais recente do Project Nox e reinstale o APK.", e)
+                throw IOException("O APK não contém ubuntu-base-arm64.tar. Baixe a versão mais recente do Project Nox e reinstale o APK.", e)
             }
             bundledArchive.use { asset ->
-                GzipCompressorInputStream(BufferedInputStream(asset)).use { gzip ->
-                    TarArchiveInputStream(gzip).use { tar ->
-                        while (true) {
-                            val entry = tar.nextTarEntry ?: break
-                            val target = rootPath.resolve(entry.name).normalize()
-                            if (!target.startsWith(rootPath)) {
-                                throw IOException("Entrada inválida no arquivo Ubuntu: ${entry.name}")
-                            }
-                            when {
-                                entry.isDirectory -> Files.createDirectories(target)
-                                entry.isSymbolicLink -> {
-                                    Files.createDirectories(target.parent)
-                                    if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) Files.delete(target)
-                                    val rawLink = Paths.get(entry.linkName)
-                                    val safeLink = if (rawLink.isAbsolute) {
-                                        target.parent.relativize(rootPath.resolve(rawLink.toString().trimStart('/')).normalize())
-                                    } else rawLink
-                                    Files.createSymbolicLink(target, safeLink)
-                                }
-                                entry.isLink -> {
-                                    val linkName = entry.linkName.removePrefix("/")
-                                    val linkTarget = rootPath.resolve(linkName).normalize()
-                                    links.add(target to linkTarget)
-                                }
-                                entry.isFile -> {
-                                    Files.createDirectories(target.parent)
-                                    FileOutputStream(target.toFile()).use { output ->
-                                        val buffer = ByteArray(32 * 1024)
-                                        while (true) {
-                                            val count = tar.read(buffer)
-                                            if (count < 0) break
-                                            output.write(buffer, 0, count)
-                                        }
-                                    }
-                                    val mode = entry.mode
-                                    target.toFile().setReadable((mode and 0b100100100) != 0, false)
-                                    target.toFile().setWritable((mode and 0b010010010) != 0, false)
-                                    target.toFile().setExecutable((mode and 0b001001001) != 0, false)
-                                }
-                            }
-                            extracted++
-                            if (extracted % 1200 == 0) progress("Extraindo Ubuntu… $extracted itens")
+                TarArchiveInputStream(BufferedInputStream(asset)).use { tar ->
+                    while (true) {
+                        val entry = tar.nextTarEntry ?: break
+                        val target = rootPath.resolve(entry.name).normalize()
+                        if (!target.startsWith(rootPath)) {
+                            throw IOException("Entrada inválida no arquivo Ubuntu: ${entry.name}")
                         }
+                        when {
+                            entry.isDirectory -> Files.createDirectories(target)
+                            entry.isSymbolicLink -> {
+                                Files.createDirectories(target.parent)
+                                if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) Files.delete(target)
+                                val rawLink = Paths.get(entry.linkName)
+                                val safeLink = if (rawLink.isAbsolute) {
+                                    target.parent.relativize(rootPath.resolve(rawLink.toString().trimStart('/')).normalize())
+                                } else rawLink
+                                Files.createSymbolicLink(target, safeLink)
+                            }
+                            entry.isLink -> {
+                                val linkName = entry.linkName.removePrefix("/")
+                                val linkTarget = rootPath.resolve(linkName).normalize()
+                                links.add(target to linkTarget)
+                            }
+                            entry.isFile -> {
+                                Files.createDirectories(target.parent)
+                                FileOutputStream(target.toFile()).use { output ->
+                                    val buffer = ByteArray(32 * 1024)
+                                    while (true) {
+                                        val count = tar.read(buffer)
+                                        if (count < 0) break
+                                        output.write(buffer, 0, count)
+                                    }
+                                }
+                                val mode = entry.mode
+                                target.toFile().setReadable((mode and 0b100100100) != 0, false)
+                                target.toFile().setWritable((mode and 0b010010010) != 0, false)
+                                target.toFile().setExecutable((mode and 0b001001001) != 0, false)
+                            }
+                        }
+                        extracted++
+                        if (extracted % 1200 == 0) progress("Extraindo Ubuntu… $extracted itens")
                     }
                 }
             }
