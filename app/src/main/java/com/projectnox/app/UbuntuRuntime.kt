@@ -49,6 +49,7 @@ object UbuntuRuntime {
             }
             progress("Abrindo o Ubuntu Base ARM64 incluído no APK…")
             val links = mutableListOf<Pair<Path, Path>>()
+            val symbolicLinks = mutableListOf<Pair<Path, Path>>()
             var extracted = 0
             val rootPath = root.toPath().toAbsolutePath().normalize()
             Files.createDirectories(rootPath)
@@ -68,13 +69,13 @@ object UbuntuRuntime {
                         when {
                             entry.isDirectory -> Files.createDirectories(target)
                             entry.isSymbolicLink -> {
-                                Files.createDirectories(target.parent)
-                                if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) Files.delete(target)
+                                // Defer links until regular files are extracted, avoiding collisions
+                                // with later entries in the same directory.
                                 val rawLink = Paths.get(entry.linkName)
                                 val safeLink = if (rawLink.isAbsolute) {
                                     target.parent.relativize(rootPath.resolve(rawLink.toString().trimStart('/')).normalize())
                                 } else rawLink
-                                Files.createSymbolicLink(target, safeLink)
+                                symbolicLinks.add(target to safeLink)
                             }
                             entry.isLink -> {
                                 val linkName = entry.linkName.removePrefix("/")
@@ -102,11 +103,19 @@ object UbuntuRuntime {
                     }
                 }
             }
+            // Restore hard links after all regular files exist.
             links.forEach { (link, target) ->
                 if (target.startsWith(rootPath) && Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
                     Files.createDirectories(link.parent)
-                    if (!Files.exists(link, LinkOption.NOFOLLOW_LINKS)) Files.createLink(link, target)
+                    if (Files.exists(link, LinkOption.NOFOLLOW_LINKS)) Files.delete(link)
+                    Files.createLink(link, target)
                 }
+            }
+            // Restore symbolic links last so they cannot interfere with extraction of later files.
+            symbolicLinks.forEach { (link, linkTarget) ->
+                Files.createDirectories(link.parent)
+                if (Files.exists(link, LinkOption.NOFOLLOW_LINKS)) Files.delete(link)
+                Files.createSymbolicLink(link, linkTarget)
             }
             val shell = File(root, "bin/bash")
             if (!shell.exists()) throw IOException("O arquivo Ubuntu foi extraído, mas /bin/bash não foi encontrado.")
@@ -119,7 +128,7 @@ object UbuntuRuntime {
             return InstallResult(true, "Ubuntu Base ARM64 instalado offline ($extracted itens extraídos). Espaço livre: ${baseDir.usableSpace / (1024 * 1024)} MB.")
         } catch (e: Exception) {
             root.deleteRecursively()
-            return InstallResult(false, "Falha ao instalar Ubuntu: ${e.message ?: e.javaClass.simpleName}. Tente novamente após conferir o espaço livre.")
+            return InstallResult(false, "Falha ao instalar Ubuntu: ${e.message ?: e.javaClass.simpleName}. Confira o espaço livre e tente novamente. Se persistir, limpe os dados do app e reinstale a versão mais recente.")
         }
     }
 
