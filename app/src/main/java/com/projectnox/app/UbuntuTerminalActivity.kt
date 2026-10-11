@@ -75,7 +75,7 @@ class UbuntuTerminalActivity : Activity() {
             typeface = Typeface.MONOSPACE
             movementMethod = ScrollingMovementMethod()
             setTextIsSelectable(true)
-            text = "Nox terminal starting…\\n"
+            text = "Nox terminal starting…\n"
         }
         outputView = text
         scroll.addView(text)
@@ -108,13 +108,13 @@ class UbuntuTerminalActivity : Activity() {
 
     private fun startShell() {
         if (!UbuntuRuntime.isInstalled(this)) {
-            appendOutput("Ubuntu is not installed. Return to Project Nox and complete offline setup.\\n")
+            appendOutput("Ubuntu is not installed. Return to Project Nox and complete offline setup.\n")
             return
         }
         try {
             shell = UbuntuRuntime.startShell(this)
             inputWriter = BufferedWriter(OutputStreamWriter(shell!!.outputStream))
-            appendOutput("\\n[Nox] Ubuntu shell started. Try: id, uname -a, apt-get update\\n")
+            appendOutput("\n[Nox] Ubuntu shell started. Try: id, uname -a, apt-get update\n")
             val active = shell!!
             Thread {
                 try {
@@ -127,14 +127,14 @@ class UbuntuTerminalActivity : Activity() {
                         }
                     }
                 } catch (e: Exception) {
-                    appendOutput("\\n[Read error: " + (e.message ?: "unknown") + "]\\n")
+                    appendOutput("\n[Read error: " + (e.message ?: "unknown") + "]\n")
                 }
-                appendOutput("\\n[Ubuntu shell exited]\\n")
+                appendOutput("\n[Ubuntu shell exited]\n")
                 inputWriter = null
                 shell = null
             }.start()
         } catch (e: Exception) {
-            appendOutput("\\n[Could not start Ubuntu: " + (e.message ?: e.javaClass.simpleName) + "]\\n")
+            appendOutput("\n[Could not start Ubuntu: " + (e.message ?: e.javaClass.simpleName) + "]\n")
             Toast.makeText(this, "Falha ao iniciar o Ubuntu. Veja a mensagem no terminal.", Toast.LENGTH_LONG).show()
         }
     }
@@ -143,12 +143,12 @@ class UbuntuTerminalActivity : Activity() {
         val command = raw.trimEnd()
         if (command.isEmpty()) return
         try {
-            val writer = inputWriter ?: run { appendOutput("\\n[Shell indisponível. Reinicie a sessão.]\\n"); return }
+            val writer = inputWriter ?: run { appendOutput("\n[Shell indisponível. Reinicie a sessão.]\n"); return }
             writer.write(command)
             writer.newLine()
             writer.flush()
         } catch (e: Exception) {
-            appendOutput("\\n[Command error: " + (e.message ?: "unknown") + "]\\n")
+            appendOutput("\n[Command error: " + (e.message ?: "unknown") + "]\n")
         }
     }
 
@@ -163,7 +163,7 @@ class UbuntuTerminalActivity : Activity() {
     }
 
     private fun stopShell() {
-        try { inputWriter?.write("exit\\n"); inputWriter?.flush() } catch (_: Exception) {}
+        try { inputWriter?.write("exit\n"); inputWriter?.flush() } catch (_: Exception) {}
         try { shell?.destroy() } catch (_: Exception) {}
         inputWriter = null
         shell = null
