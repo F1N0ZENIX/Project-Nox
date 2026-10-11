@@ -103,13 +103,25 @@ object UbuntuRuntime {
                     }
                 }
             }
-            // Restore hard links after all regular files exist.
-            links.forEach { (link, target) ->
-                if (target.startsWith(rootPath) && Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
-                    Files.createDirectories(link.parent)
-                    if (Files.exists(link, LinkOption.NOFOLLOW_LINKS)) Files.delete(link)
-                    Files.createLink(link, target)
+            // Ubuntu Base contains hard links (including Perl aliases). Android filesystems
+            // may reject creating them, so materialize each hard link as a regular file copy.
+            val pendingLinks = links.toMutableList()
+            var previousPendingCount = -1
+            while (pendingLinks.isNotEmpty() && pendingLinks.size != previousPendingCount) {
+                previousPendingCount = pendingLinks.size
+                val iterator = pendingLinks.iterator()
+                while (iterator.hasNext()) {
+                    val (link, target) = iterator.next()
+                    if (target.startsWith(rootPath) && Files.exists(target)) {
+                        Files.createDirectories(link.parent)
+                        Files.copy(target, link, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                            java.nio.file.StandardCopyOption.COPY_ATTRIBUTES)
+                        iterator.remove()
+                    }
                 }
+            }
+            if (pendingLinks.isNotEmpty()) {
+                throw IOException("Não foi possível restaurar arquivos vinculados do Ubuntu; destino ausente: " + pendingLinks.first().second)
             }
             // Restore symbolic links last so they cannot interfere with extraction of later files.
             symbolicLinks.forEach { (link, linkTarget) ->
