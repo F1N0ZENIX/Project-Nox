@@ -44,14 +44,21 @@ object UbuntuRuntime {
             if (!baseDir.exists() && !baseDir.mkdirs()) {
                 throw IOException("Não foi possível criar a pasta de Ubuntu.")
             }
-            if (baseDir.usableSpace < 650L * 1024L * 1024L) {
-                throw IOException("Libere pelo menos 650 MB de armazenamento para extrair o Ubuntu Base.")
+            val freeBytes = baseDir.usableSpace
+            if (freeBytes < 350L * 1024L * 1024L) {
+                throw IOException("Pouco espaço livre: ${freeBytes / (1024 * 1024)} MB. Libere pelo menos 350 MB e tente novamente.")
             }
-            progress("Preparando Ubuntu Base ARM64…")
+            progress("Abrindo o Ubuntu Base ARM64 incluído no APK…")
             val links = mutableListOf<Pair<Path, Path>>()
             var extracted = 0
             val rootPath = root.toPath().toAbsolutePath().normalize()
-            assetManager.open("ubuntu-base-arm64.tar.gz").use { asset ->
+            Files.createDirectories(rootPath)
+            val bundledArchive = try {
+                assetManager.open("ubuntu-base-arm64.tar.gz")
+            } catch (e: IOException) {
+                throw IOException("O APK não contém ubuntu-base-arm64.tar.gz. Baixe a versão mais recente do Project Nox e reinstale o APK.", e)
+            }
+            bundledArchive.use { asset ->
                 GzipCompressorInputStream(BufferedInputStream(asset)).use { gzip ->
                     TarArchiveInputStream(gzip).use { tar ->
                         while (true) {
@@ -112,10 +119,10 @@ object UbuntuRuntime {
             resolv.parentFile?.mkdirs()
             if (Files.isSymbolicLink(resolv.toPath())) Files.delete(resolv.toPath())
             resolv.writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\n")
-            return InstallResult(true, "Ubuntu Base ARM64 instalado offline. Espaço livre: ${baseDir.usableSpace / (1024 * 1024)} MB.")
+            return InstallResult(true, "Ubuntu Base ARM64 instalado offline ($extracted itens extraídos). Espaço livre: ${baseDir.usableSpace / (1024 * 1024)} MB.")
         } catch (e: Exception) {
             root.deleteRecursively()
-            return InstallResult(false, "Falha ao instalar Ubuntu: ${e.message ?: e.javaClass.simpleName}")
+            return InstallResult(false, "Falha ao instalar Ubuntu: ${e.message ?: e.javaClass.simpleName}. Tente novamente após conferir o espaço livre.")
         }
     }
 
