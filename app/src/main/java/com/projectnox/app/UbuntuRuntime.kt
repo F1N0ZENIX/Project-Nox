@@ -103,10 +103,10 @@ object UbuntuRuntime {
             if (!shell.exists()) throw IOException("O arquivo Ubuntu foi extraído, mas /bin/bash não foi encontrado.")
             File(root, "tmp").apply { mkdirs(); setWritable(true, false); setExecutable(true, false) }
             File(root, "root").mkdirs()
-            File(root, "etc/resolv.conf").apply {
-                parentFile?.mkdirs()
-                writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\n")
-            }
+            val resolv = File(root, "etc/resolv.conf")
+            resolv.parentFile?.mkdirs()
+            if (Files.isSymbolicLink(resolv.toPath())) Files.delete(resolv.toPath())
+            resolv.writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\n")
             return InstallResult(true, "Ubuntu Base ARM64 instalado offline. Espaço livre: ${baseDir.usableSpace / (1024 * 1024)} MB.")
         } catch (e: Exception) {
             root.deleteRecursively()
