@@ -74,13 +74,6 @@ jobs:
           open(path, "w", encoding="utf-8").write(text)
           print(f"Building Project Nox {version_name} (versionCode {version_code})")
           PY
-      - name: Read app version
-        id: version
-        run: |
-          VERSION=$(grep -oP "versionName '\\K[^']+" app/build.gradle)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-          echo "filename=Nox release $VERSION.apk" >> "$GITHUB_OUTPUT"
       - name: Prepare Ubuntu Base and PRoot before Android asset merging
         run: |
           gradle --no-daemon :app:prepareNoxLinuxRuntime
@@ -88,23 +81,21 @@ jobs:
           ls -lh app/src/debug/assets/ubuntu-base-arm64.tar.gz
       - name: Build exactly one APK
         run: gradle --no-daemon --no-build-cache --rerun-tasks assembleDebug
-      - name: Diagnose merged Ubuntu asset
+      - name: Diagnose packaged Ubuntu asset
         run: |
-          echo "Source asset:"
+          echo "Compressed source asset:"
           ls -lh app/src/debug/assets/ubuntu-base-arm64.tar.gz
-          echo "Merged assets directory:"
-          find app/build/intermediates -name "ubuntu-base-arm64.tar.gz" -print || true
-          echo "APK asset listing:"
-          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -E "ubuntu-base|assets/" | head -40 || true
+          echo "Packaged asset (Android expands .gz assets and drops the .gz suffix):"
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -E 'assets/ubuntu-base-arm64\.tar(\.gz)?$' || true
       - name: Verify Ubuntu Base is packaged in the APK
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
-          if ! unzip -l "$APK" | grep -q 'assets/ubuntu-base-arm64.tar.gz'; then
-            echo "ERROR: Ubuntu Base archive is missing from the APK assets. Refusing to publish an incomplete APK."
+          if ! unzip -l "$APK" | grep -q 'assets/ubuntu-base-arm64.tar'; then
+            echo "ERROR: Ubuntu Base tar archive is missing from the APK assets. Refusing to publish an incomplete APK."
             exit 1
           fi
-          echo "Verified: Ubuntu Base ARM64 archive is embedded in the APK."
-          unzip -l "$APK" | grep 'assets/ubuntu-base-arm64.tar.gz'
+          echo "Verified: Ubuntu Base archive is embedded in the APK as ubuntu-base-arm64.tar."
+          unzip -l "$APK" | grep 'assets/ubuntu-base-arm64.tar'
       - name: Rename APK
         run: |
           mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/Nox release ${{ steps.version.outputs.version }}.apk"
