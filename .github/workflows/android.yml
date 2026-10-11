@@ -1,13 +1,16 @@
-name: Build Project Nox APK
+name: Build and Release Project Nox APK
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
+concurrency:
+  group: nox-release-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  build:
-    name: Build debug APK
+  build-and-release:
+    name: Build, sign and publish APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -21,11 +24,41 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+      - name: Prepare stable development signing key
+        run: |
+          mkdir -p .github
+          echo "$(cat .github/nox-dev.keystore.b64)" | base64 --decode > .github/nox-dev.keystore
+      - name: Set increasing version code
+        run: |
+          python3 - <<'PY'
+          import os, re
+          path = "app/build.gradle"
+          text = open(path, encoding="utf-8").read()
+          version_code = 1000 + int(os.environ["GITHUB_RUN_NUMBER"])
+          text, count = re.subn(r"versionCode\\s+\\d+", f"versionCode {version_code}", text, count=1)
+          if count != 1:
+              raise SystemExit("Could not update versionCode in app/build.gradle")
+          open(path, "w", encoding="utf-8").write(text)
+          PY
       - name: Build APK
         run: gradle --no-daemon assembleDebug
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: Project-Nox-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Read app version
+        id: version
+        run: |
+          VERSION="$(grep -oP "versionName '\\K[^']+" app/build.gradle)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}-build.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+      - name: Publish GitHub Release with changelog
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Project Nox ${{ steps.version.outputs.version }} (build ${{ github.run_number }})
+          generate_release_notes: true
+          files: app/build/outputs/apk/debug/app-debug.apk
+          fail_on_unmatched_files: true
