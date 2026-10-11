@@ -87,7 +87,15 @@ jobs:
           test -s app/src/main/assets/ubuntu-base-arm64.tar.gz
           ls -lh app/src/main/assets/ubuntu-base-arm64.tar.gz
       - name: Build exactly one APK
-        run: gradle --no-daemon assembleDebug
+        run: gradle --no-daemon --no-build-cache --rerun-tasks assembleDebug
+      - name: Diagnose merged Ubuntu asset
+        run: |
+          echo "Source asset:"
+          ls -lh app/src/main/assets/ubuntu-base-arm64.tar.gz
+          echo "Merged assets directory:"
+          find app/build/intermediates -path "*merged_assets*" -name "ubuntu-base-arm64.tar.gz" -exec ls -lh {} \\; || true
+          echo "APK asset listing:"
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -E "ubuntu-base|assets/" | head -40 || true
       - name: Verify Ubuntu Base is packaged in the APK
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
