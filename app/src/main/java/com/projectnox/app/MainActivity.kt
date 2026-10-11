@@ -263,29 +263,67 @@ class MainActivity : Activity() {
     }
 
     private fun session(body: LinearLayout) {
-        body.addView(label("Linux setup", 27f, white, true))
+        body.addView(label("Ubuntu setup", 27f, white, true))
         body.addView(space(6))
-        body.addView(label("Project Nox is being built in milestones. This build does not yet download or start Ubuntu.", 13f, grey))
+        body.addView(label("Ubuntu Base ARM64 and the PRoot runtime are bundled into this APK. Setup extracts them from the APK; no Ubuntu rootfs download is needed.", 13f, grey))
         body.addView(space(18))
-        val status = column(card, 15)
-        status.addView(label("MILESTONE 01", 10f, grey, true))
-        status.addView(space(6))
-        status.addView(label("Android shell and touch-first settings", 15f, white, true))
-        status.addView(space(5))
-        status.addView(label("Complete: navigation, touchpad demo, persistent sensitivity and orientation settings.", 12f, grey))
-        body.addView(status)
-        body.addView(space(10))
-        val next = column(card, 15)
-        next.addView(label("MILESTONE 02", 10f, red, true))
-        next.addView(space(6))
-        next.addView(label("Ubuntu ARM64 runtime", 15f, white, true))
-        next.addView(space(5))
-        next.addView(label("To do: PRoot bootstrap, safe downloads, extraction progress, start/stop process management and storage checks.", 12f, grey))
-        body.addView(next)
+        if (!UbuntuRuntime.isSupportedDevice()) {
+            val unsupported = column(card, 15)
+            unsupported.addView(label("ARM64 DEVICE REQUIRED", 11f, red, true))
+            unsupported.addView(space(6))
+            unsupported.addView(label("This build contains the ARM64 runtime. It cannot run on an x86/x86_64 Android emulator.", 13f, grey))
+            body.addView(unsupported)
+        } else if (UbuntuRuntime.isInstalled(this)) {
+            val ready = column(card, 15)
+            ready.addView(label("●  UBUNTU INSTALLED", 11f, white, true))
+            ready.addView(space(6))
+            ready.addView(label("Ubuntu Base is extracted in private app storage. The shell can now be started.", 13f, grey))
+            body.addView(ready)
+            body.addView(space(12))
+            body.addView(btn("OPEN UBUNTU TERMINAL", true) { startActivity(android.content.Intent(this, UbuntuTerminalActivity::class.java)) })
+        } else {
+            val setup = column(card, 15)
+            setup.addView(label("OFFLINE INSTALL", 11f, white, true))
+            setup.addView(space(6))
+            setup.addView(label("The compressed root filesystem is packaged with Nox. Allow around 650 MB free for extraction and temporary files. The first extraction can take a few minutes.", 13f, grey))
+            body.addView(setup)
+            body.addView(space(12))
+            val progressLabel = label("Ready to extract Ubuntu Base.", 12f, grey)
+            body.addView(progressLabel)
+            body.addView(space(8))
+            val installButton = btn("INSTALL UBUNTU OFFLINE", true) {}
+            installButton.setOnClickListener {
+                installButton.isEnabled = false
+                installButton.text = "INSTALLING…"
+                progressLabel.text = "Preparing the bundled Ubuntu archive…"
+                Thread {
+                    val result = UbuntuRuntime.install(this) { message ->
+                        mainHandler.post { progressLabel.text = message }
+                    }
+                    mainHandler.post {
+                        if (result.success) {
+                            toast(result.message)
+                            show("session")
+                        } else {
+                            progressLabel.text = result.message
+                            installButton.isEnabled = true
+                            installButton.text = "TRY AGAIN"
+                            toast("Ubuntu setup failed.")
+                        }
+                    }
+                }.start()
+            }
+            body.addView(installButton)
+        }
         body.addView(space(18))
-        body.addView(btn("←  SETTINGS", false) { show("settings") })
+        body.addView(label("CURRENT SCOPE", 10f, grey, true))
+        body.addView(space(5))
+        body.addView(label("The Ubuntu shell is the first functional runtime milestone. XFCE graphical output, integrated mouse forwarding and audio are not enabled yet.", 13f, grey))
+        body.addView(space(18))
+        body.addView(btn("←  HOME", false) { show("home") })
+        body.addView(space(8))
+        body.addView(btn("⚙  SETTINGS", false) { show("settings") })
     }
-
     private fun about(body: LinearLayout) {
         body.addView(label("Project Nox", 29f, white, true))
         body.addView(space(6))
