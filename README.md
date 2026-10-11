@@ -20,7 +20,7 @@
 
 Project Nox aims to bring a real Linux desktop environment to Android without replacing Android or requiring root. Its visual direction is inspired by monochrome industrial design, AMOLED black, dot patterns and compact touch-friendly settings.
 
-**This repository is under active development.** The current APK is an early Android interface prototype; it does not yet install or run Ubuntu.
+**This repository is under active development.** The current APK is an early Android interface prototype. Ubuntu execution and a graphical Linux desktop are not implemented yet; see the status notes below.
 
 ## Current features
 
@@ -37,7 +37,7 @@ Project Nox aims to bring a real Linux desktop environment to Android without re
 
 **[Open Releases and download the latest APK](https://github.com/F1N0ZENIX/Project-Nox/releases/latest).**
 
-Each successful push to `main` automatically builds the APK, attaches it to a new GitHub Release, and asks GitHub to generate release notes from changes since the previous release. The APK is also uploaded as a temporary Actions artifact.
+Each successful push to `main` builds **one APK**, names it `Nox release Y.Y.Y.apk`, attaches that same file to a new GitHub Release, and includes a commit-based changelog. The build workflow cancels superseded runs so rapid commits do not leave several competing builds publishing APKs. The exact version is generated automatically for each run.
 
 ## Updating Project Nox
 
@@ -56,6 +56,10 @@ The workflow now reuses a persistent development keystore from the GitHub Action
 
 To encode a keystore file as Base64 on Linux, run `base64 -w 0 nox-release.keystore`. Keep the original keystore and passwords private; anyone with them can sign an APK that Android treats as an update to this app. If Android reports a signature mismatch, the installed APK was signed with a different key; uninstall that old build once, then install the latest Release.
 
+## Ubuntu status
+
+The current release does **not** yet contain a runnable Ubuntu environment. A complete no-root Linux desktop requires an Android-compatible PRoot runtime, an ARM64 Ubuntu root filesystem, process/lifecycle management, and a graphics bridge (for example, a VNC/X server integration). Bundling only an Ubuntu root filesystem in the APK would not make it executable, and including a full desktop image would make the APK extremely large. These pieces must be implemented and tested before Nox can honestly claim to launch Ubuntu. The current setup screen is a status page, not a working installer.
+
 ## Roadmap
 
 - [x] Android project and automated debug build
@@ -65,7 +69,8 @@ To encode a keystore file as Base64 on Linux, run `base64 -w 0 nox-release.keyst
 - [x] Automatic Releases, APK attachment and generated release notes
 - [x] Increasing version codes for automated builds
 - [x] Reuse a persistent development signing key for automated builds
-- [ ] Ubuntu ARM64 userspace bootstrap using PRoot
+- [ ] Bundle/build an Android-compatible ARM64 PRoot runtime
+- [ ] Ubuntu ARM64 userspace bootstrap and installation flow
 - [ ] Download/extract progress, cancellation and storage checks
 - [ ] Start/stop lifecycle for the Linux environment
 - [ ] XFCE desktop display integration
@@ -82,7 +87,7 @@ cd Project-Nox
 gradle --no-daemon assembleDebug
 ```
 
-APK output: `app/build/outputs/apk/debug/app-debug.apk`. A local debug build uses the machine's local debug key unless the signing environment variables are configured.
+APK output from a local build: `app/build/outputs/apk/debug/app-debug.apk`. GitHub Releases rename the single published APK to `Nox release Y.Y.Y.apk`. A local debug build uses the machine's local debug key unless the signing environment variables are configured.
 
 ## Device target
 
