@@ -133,6 +133,19 @@ object UbuntuRuntime {
             if (!shell.exists()) throw IOException("O arquivo Ubuntu foi extraído, mas /bin/bash não foi encontrado.")
             File(root, "tmp").apply { mkdirs(); setWritable(true, false); setExecutable(true, false) }
             File(root, "root").mkdirs()
+            // PRoot starts Ubuntu as UID 0 (-0), so privilege escalation is already
+            // provided by the runtime. Ship a sudo-compatible shim for minimal Ubuntu Base.
+            val sudo = File(root, "usr/bin/sudo")
+            sudo.parentFile?.mkdirs()
+            sudo.writeText("#!/bin/sh\n# Project Nox: PRoot session already runs as root (UID 0).\nwhile [ \"\$#\" -gt 0 ]; do\n  case \"\$1\" in\n    -u|-g|-h|-p|-C|-T) shift; [ \"\$#\" -gt 0 ] && shift ;;\n    -E|-H|-n|-S|-b|-k|-K|-V|--) shift ;;\n    -*) shift ;;\n    *) break ;;\n  esac\ndone\n[ \"\$#\" -eq 0 ] && exit 0\nexec \"\$@\"\n")
+            sudo.setReadable(true, false)
+            sudo.setWritable(true, true)
+            sudo.setExecutable(true, false)
+            val sudoBin = File(root, "bin/sudo")
+            if (!sudoBin.exists()) {
+                try { Files.createSymbolicLink(sudoBin.toPath(), Paths.get("../usr/bin/sudo")) }
+                catch (_: Exception) { sudoBin.writeText(sudo.readText()); sudoBin.setExecutable(true, false) }
+            }
             val resolv = File(root, "etc/resolv.conf")
             resolv.parentFile?.mkdirs()
             if (Files.isSymbolicLink(resolv.toPath())) Files.delete(resolv.toPath())
