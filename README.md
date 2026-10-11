@@ -43,7 +43,7 @@ Each successful push to `main` automatically builds the APK, attaches it to a ne
 
 Android permits installing a newer APK over an existing installation only when the package ID matches and both APKs are signed with the same signing key. Project Nox keeps the package ID `com.projectnox.app` and assigns a higher `versionCode` to every automated build.
 
-**One-time setup needed for reliable updates:** configure a persistent signing key in the repository's GitHub Actions secrets. Without it, the workflow still publishes a test APK, but GitHub's temporary runner signing key can change between builds and Android may refuse an in-place update.
+The workflow now reuses a persistent development keystore from the GitHub Actions cache, so you normally can install the newer APK directly over the previous version without uninstalling it. For a stronger long-term guarantee, configure a permanent keystore using GitHub repository Actions secrets:
 
 1. Create a signing keystore and keep a secure backup. Do not use a production key for this prototype.
 2. In GitHub, open **Settings → Secrets and variables → Actions → New repository secret**.
@@ -52,9 +52,9 @@ Android permits installing a newer APK over an existing installation only when t
    - `NOX_KEYSTORE_PASSWORD`: the keystore password.
    - `NOX_KEY_ALIAS`: the key alias.
    - `NOX_KEY_PASSWORD`: the key password.
-4. Push a new commit to `main`. Subsequent Releases will use that stable signature, allowing compatible newer APKs to install over previous ones.
+4. Push a new commit to `main`. The workflow will use that key for subsequent releases.
 
-To encode a keystore file as Base64 on Linux, run `base64 -w 0 nox-release.keystore`. Keep the original keystore and passwords private; anyone with them can sign an APK that Android treats as an update to this app. If you already installed an APK signed with a different key, Android will require uninstalling that older installation before switching signatures.
+To encode a keystore file as Base64 on Linux, run `base64 -w 0 nox-release.keystore`. Keep the original keystore and passwords private; anyone with them can sign an APK that Android treats as an update to this app. If Android reports a signature mismatch, the installed APK was signed with a different key; uninstall that old build once, then install the latest Release.
 
 ## Roadmap
 
@@ -64,7 +64,7 @@ To encode a keystore file as Base64 on Linux, run `base64 -w 0 nox-release.keyst
 - [x] Launcher icon and improved README
 - [x] Automatic Releases, APK attachment and generated release notes
 - [x] Increasing version codes for automated builds
-- [ ] Configure persistent release signing key in repository Actions secrets
+- [x] Reuse a persistent development signing key for automated builds
 - [ ] Ubuntu ARM64 userspace bootstrap using PRoot
 - [ ] Download/extract progress, cancellation and storage checks
 - [ ] Start/stop lifecycle for the Linux environment
