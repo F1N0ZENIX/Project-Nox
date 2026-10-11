@@ -91,7 +91,7 @@ jobs:
       - name: Diagnose merged Ubuntu asset
         run: |
           echo "Source asset:"
-          ls -lh app/src/main/assets/ubuntu-base-arm64.tar.gz
+          ls -lh app/src/debug/assets/ubuntu-base-arm64.tar.gz
           echo "Merged assets directory:"
           find app/build/intermediates -name "ubuntu-base-arm64.tar.gz" -print || true
           echo "APK asset listing:"
