@@ -2,6 +2,9 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
 }
+
+import java.security.MessageDigest
+
 android {
     namespace 'com.projectnox.app'
     compileSdk 35
@@ -36,6 +39,71 @@ android {
     }
     kotlinOptions { jvmTarget = '17' }
 }
+
 dependencies {
     implementation 'androidx.core:core-ktx:1.15.0'
+    implementation 'org.apache.commons:commons-compress:1.27.1'
 }
+
+// Fetch pinned, checksummed ARM64 runtime components at build time. The Ubuntu
+// rootfs and runtime are packaged in the APK, so first launch needs no rootfs download.
+def runtimeDir = file('src/main/jniLibs/arm64-v8a')
+def assetsDir = file('src/main/assets')
+def prorootAssets = [
+    'libproroot.so'                 : 'a4e74d75b66cdc02b080adfe863dbf9951c3b30610d77beddc95488d5fe5de01',
+    'libproroot-bridge.so'          : '1c5bc9537a270e8bf8b1c70222813f57b60b828bfb5503ddf8fe37685092de2f',
+    'libproroot-linker.so'           : '51a0ec5bfed00e572a0de09e22d9057e2befc386b78e426613d3e0ab03f4ecee',
+    'libproroot-runtime.so'          : '8c47a0a7db32d84c179ebb5bf3640f655a3181860ece5886ae44d92858730c34',
+    'libproroot-stub-loader.so'      : '06c6624db3bdc45b9ced151cd781df439a37b47731d244b93e9d6a58cd48cde0'
+]
+def downloadVerified = { String url, File destination, String expectedSha ->
+    if (destination.exists()) {
+        def digest = MessageDigest.getInstance('SHA-256').digest(destination.bytes).encodeHex().toString()
+        if (digest == expectedSha) return
+        destination.delete()
+    }
+    destination.parentFile.mkdirs()
+    def connection = new URL(url).openConnection()
+    connection.connectTimeout = 20000
+    connection.readTimeout = 120000
+    connection.setRequestProperty('User-Agent', 'Project-Nox-Android-Build')
+    connection.getInputStream().withCloseable { input ->
+        destination.withOutputStream { output -> input.transferTo(output) }
+    }
+    def digest = MessageDigest.getInstance('SHA-256').digest(destination.bytes).encodeHex().toString()
+    if (digest != expectedSha) {
+        destination.delete()
+        throw new GradleException("SHA-256 mismatch for ${destination.name}: ${digest}")
+    }
+}
+
+tasks.register('prepareNoxLinuxRuntime') {
+    group = 'build setup'
+    description = 'Downloads the pinned ARM64 PRoot runtime and Ubuntu Base root filesystem.'
+    outputs.files(prorootAssets.keySet().collect { new File(runtimeDir, it) })
+    outputs.file(new File(assetsDir, 'ubuntu-base-arm64.tar.gz'))
+    doLast {
+        runtimeDir.mkdirs()
+        assetsDir.mkdirs()
+        prorootAssets.each { name, sha ->
+            downloadVerified("https://github.com/coderredlab/proroot/releases/download/v1.2.8/${name}", new File(runtimeDir, name), sha)
+        }
+        def rootfsName = 'ubuntu-base-24.04.5-base-arm64.tar.gz'
+        def rootfs = new File(assetsDir, 'ubuntu-base-arm64.tar.gz')
+        if (!rootfs.exists()) {
+            def sumsFile = new File(temporaryDir, 'ubuntu-base-SHA256SUMS')
+            new URL('https://cdimages.ubuntu.com/ubuntu-base/releases/24.04/release/SHA256SUMS').openConnection().with {
+                connectTimeout = 20000
+                readTimeout = 30000
+                setRequestProperty('User-Agent', 'Project-Nox-Android-Build')
+                getInputStream().withCloseable { input -> sumsFile.withOutputStream { output -> input.transferTo(output) } }
+            }
+            def line = sumsFile.readLines('UTF-8').find { it.contains(rootfsName) }
+            if (line == null) throw new GradleException("Ubuntu checksum not found for ${rootfsName}")
+            def expected = line.trim().split(/\s+/)[0]
+            downloadVerified("https://cdimages.ubuntu.com/ubuntu-base/releases/24.04/release/${rootfsName}", rootfs, expected)
+        }
+        logger.lifecycle('Project Nox Linux runtime ready: PRoot ARM64 + Ubuntu 24.04 Base ARM64.')
+    }
+}
+tasks.named('preBuild').configure { dependsOn 'prepareNoxLinuxRuntime' }
