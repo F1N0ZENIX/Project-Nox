@@ -47,7 +47,6 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Draw edge-to-edge, then explicitly keep the app content below system bars/cutouts.
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = black
         window.navigationBarColor = black
@@ -88,9 +87,7 @@ class MainActivity : Activity() {
         header.addView(brand, LinearLayout.LayoutParams(0, dp(50), 1f))
         header.addView(btn("⚙", false) { show("settings") }, LinearLayout.LayoutParams(dp(48), dp(44)))
         root.addView(header)
-
-        val line = View(this).apply { setBackgroundColor(Color.rgb(45, 45, 45)) }
-        root.addView(line, LinearLayout.LayoutParams(-1, dp(1)))
+        root.addView(View(this).apply { setBackgroundColor(Color.rgb(45, 45, 45)) }, LinearLayout.LayoutParams(-1, dp(1)))
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
@@ -122,10 +119,7 @@ class MainActivity : Activity() {
         body.addView(space(20))
         val status = column(card, 16)
         val installed = UbuntuRuntime.isInstalled(this)
-        status.addView(label(
-            if (installed) "●  UBUNTU ARM64 · INSTALLED" else "●  UBUNTU ARM64 · READY TO INSTALL",
-            11f, if (installed) white else red, true
-        ))
+        status.addView(label(if (installed) "●  UBUNTU ARM64 · INSTALLED" else "●  UBUNTU ARM64 · READY TO INSTALL", 11f, if (installed) white else red, true))
         status.addView(space(8))
         status.addView(label(
             if (installed) "Ubuntu Base is installed locally. Open the terminal to run Linux commands; a graphical XFCE desktop is the next integration step."
@@ -135,8 +129,7 @@ class MainActivity : Activity() {
         body.addView(status)
         body.addView(space(14))
         body.addView(btn(if (installed) "OPEN UBUNTU TERMINAL" else "SET UP UBUNTU OFFLINE", true) {
-            if (installed) startActivity(android.content.Intent(this, UbuntuTerminalActivity::class.java))
-            else show("session")
+            if (installed) startActivity(android.content.Intent(this, UbuntuTerminalActivity::class.java)) else show("session")
         })
         body.addView(space(8))
         body.addView(btn("OPEN LINUX DESKTOP  ↗", true) { startActivity(android.content.Intent(this, DesktopActivity::class.java)) })
@@ -194,9 +187,7 @@ class MainActivity : Activity() {
             pad.setOnTouchListener { _, event ->
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
-                        downX = event.x; downY = event.y
-                        lastX = event.x; lastY = event.y
-                        true
+                        downX = event.x; downY = event.y; lastX = event.x; lastY = event.y; true
                     }
                     MotionEvent.ACTION_MOVE -> {
                         pointerX += (event.x - lastX) * (pointerSpeed / 50f)
@@ -206,9 +197,7 @@ class MainActivity : Activity() {
                         true
                     }
                     MotionEvent.ACTION_UP -> {
-                        if (abs(event.x - downX) < dp(8) && abs(event.y - downY) < dp(8)) {
-                            pointerLabel.text = "●  TAP DETECTED"
-                        }
+                        if (abs(event.x - downX) < dp(8) && abs(event.y - downY) < dp(8)) pointerLabel.text = "●  TAP DETECTED"
                         true
                     }
                     else -> true
@@ -302,9 +291,7 @@ class MainActivity : Activity() {
                 installButton.text = "INSTALLING…"
                 progressLabel.text = "Preparing the bundled Ubuntu archive…"
                 Thread {
-                    val result = UbuntuRuntime.install(this) { message ->
-                        mainHandler.post { progressLabel.text = message }
-                    }
+                    val result = UbuntuRuntime.install(this) { message -> mainHandler.post { progressLabel.text = message } }
                     mainHandler.post {
                         if (result.success) {
                             toast(result.message)
@@ -329,6 +316,21 @@ class MainActivity : Activity() {
         body.addView(space(8))
         body.addView(btn("⚙  SETTINGS", false) { show("settings") })
     }
+
+    private fun desktop(body: LinearLayout) {
+        body.addView(label("Linux desktop", 27f, white, true))
+        body.addView(space(6))
+        body.addView(label("Start an XFCE desktop session inside the Nox window using Ubuntu, VNC and noVNC.", 13f, grey))
+        body.addView(space(16))
+        body.addView(btn("OPEN DESKTOP", true) {
+            startActivity(android.content.Intent(this, DesktopActivity::class.java))
+        })
+        body.addView(space(8))
+        body.addView(btn("←  SETTINGS", false) { show("settings") })
+        body.addView(space(8))
+        body.addView(btn("←  HOME", false) { show("home") })
+    }
+
     private fun about(body: LinearLayout) {
         body.addView(label("Project Nox", 29f, white, true))
         body.addView(space(6))
@@ -416,8 +418,7 @@ class MainActivity : Activity() {
         }
         root.addView(input, 1, LinearLayout.LayoutParams(-1, dp(48)))
         input.requestFocus()
-        (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-            .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+        (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
         toast("Android keyboard opened. Linux keyboard forwarding comes in a later milestone.")
     }
 
