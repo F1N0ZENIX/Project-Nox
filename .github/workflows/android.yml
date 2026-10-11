@@ -1,14 +1,16 @@
 name: Build and Release Project Nox APK
 on:
+  push:
+    branches: ["main"]
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
   group: nox-release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build-and-release:
-    name: Build, sign and publish APK
+    name: Build one APK and publish release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -56,37 +58,43 @@ jobs:
             } >> "$GITHUB_ENV"
             echo "Using the cached development signing key."
           fi
-      - name: Set increasing version code
+      - name: Set unique Android version for this build
         run: |
           python3 - <<'PY'
           import os, re
           path = "app/build.gradle"
           text = open(path, encoding="utf-8").read()
-          version_code = 1000 + int(os.environ["GITHUB_RUN_NUMBER"])
-          text, count = re.subn(r"versionCode\s+\d+", f"versionCode {version_code}", text, count=1)
-          if count != 1:
-              raise SystemExit("Could not update versionCode in app/build.gradle")
+          run = int(os.environ["GITHUB_RUN_NUMBER"])
+          version_code = 1000 + run
+          version_name = f"0.3.{run}"
+          text, count_code = re.subn(r"versionCode\s+\d+", f"versionCode {version_code}", text, count=1)
+          text, count_name = re.subn(r"versionName\s+'[^']+'", f"versionName '{version_name}'", text, count=1)
+          if count_code != 1 or count_name != 1:
+              raise SystemExit("Could not set app versionCode/versionName")
           open(path, "w", encoding="utf-8").write(text)
+          print(f"Building Project Nox {version_name} (versionCode {version_code})")
           PY
-      - name: Build APK
-        run: gradle --no-daemon assembleDebug
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Project-Nox-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
       - name: Read app version
         id: version
         run: |
           VERSION=$(grep -oP "versionName '\\K[^']+" app/build.gradle)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v${VERSION}-build.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-      - name: Generate changelog
-        env:
-          NEW_TAG: ${{ steps.version.outputs.tag }}
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "filename=Nox release $VERSION.apk" >> "$GITHUB_OUTPUT"
+      - name: Build exactly one APK
+        run: gradle --no-daemon assembleDebug
+      - name: Rename APK
         run: |
-          PREVIOUS_TAG="$(git tag --list 'v*-build.*' --sort=-version:refname | head -n 1)"
+          mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/Nox release ${{ steps.version.outputs.version }}.apk"
+      - name: Upload the single APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nox-release-${{ steps.version.outputs.version }}
+          path: app/build/outputs/apk/debug/Nox release ${{ steps.version.outputs.version }}.apk
+          if-no-files-found: error
+      - name: Generate changelog
+        run: |
+          PREVIOUS_TAG="$(git tag --list 'v*' --sort=-version:refname | head -n 1)"
           if [ -n "$PREVIOUS_TAG" ]; then
             CHANGES="$(git log --pretty=format:'- %s (%h)' "$PREVIOUS_TAG..HEAD")"
           else
@@ -100,13 +108,13 @@ jobs:
             echo "$CHANGES"
             echo
             echo "## Installation"
-            echo "Download app-debug.apk and install it over your existing Project Nox installation."
+            echo "Install the APK over your existing Project Nox version. If Android reports a signing mismatch, remove the older test build once."
           } > release-notes.md
-      - name: Publish GitHub Release with changelog
+      - name: Publish GitHub Release with one APK and changelog
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Project Nox ${{ steps.version.outputs.version }} (build ${{ github.run_number }})
+          name: Project Nox ${{ steps.version.outputs.version }}
           body_path: release-notes.md
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: app/build/outputs/apk/debug/Nox release ${{ steps.version.outputs.version }}.apk
           fail_on_unmatched_files: true
