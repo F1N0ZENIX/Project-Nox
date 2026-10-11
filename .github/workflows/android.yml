@@ -81,6 +81,11 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
           echo "filename=Nox release $VERSION.apk" >> "$GITHUB_OUTPUT"
+      - name: Prepare Ubuntu Base and PRoot before Android asset merging
+        run: |
+          gradle --no-daemon :app:prepareNoxLinuxRuntime
+          test -s app/src/main/assets/ubuntu-base-arm64.tar.gz
+          ls -lh app/src/main/assets/ubuntu-base-arm64.tar.gz
       - name: Build exactly one APK
         run: gradle --no-daemon assembleDebug
       - name: Verify Ubuntu Base is packaged in the APK
