@@ -43,6 +43,7 @@ class MainActivity : Activity() {
     private var lastX = 0f
     private var lastY = 0f
     private lateinit var pointerLabel: TextView
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
