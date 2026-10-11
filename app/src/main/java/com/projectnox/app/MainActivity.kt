@@ -342,7 +342,8 @@ class MainActivity : Activity() {
         body.addView(label("WHAT IS NOT READY YET", 10f, grey, true))
         body.addView(space(5))
         body.addView(label("XFCE graphical desktop streaming, Linux mouse/keyboard forwarding and audio. The terminal is the first working Linux milestone; it is not yet a graphical desktop.", 13f, grey))
-        body.addView(space(18))        body.addView(btn("←  SETTINGS", false) { show("settings") })
+        body.addView(space(18))
+        body.addView(btn("←  SETTINGS", false) { show("settings") })
     }
 
     private fun menu(icon: String, title: String, subtitle: String, action: () -> Unit): View {
