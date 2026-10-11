@@ -108,3 +108,10 @@ tasks.register('prepareNoxLinuxRuntime') {
     }
 }
 tasks.named('preBuild').configure { dependsOn 'prepareNoxLinuxRuntime' }
+// Asset merging must wait for Ubuntu to finish downloading; depending only on
+// preBuild can allow mergeDebugAssets to race with the download task.
+tasks.configureEach {
+    if (name.startsWith('merge') && name.endsWith('Assets')) {
+        dependsOn tasks.named('prepareNoxLinuxRuntime')
+    }
+}
