@@ -2,6 +2,7 @@ package com.projectnox.app
 
 import android.app.Activity
 import android.content.Context
+import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -17,12 +18,14 @@ import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.view.WindowCompat
 import kotlin.math.abs
 
 class MainActivity : Activity() {
+    private val prefs by lazy { getSharedPreferences("nox_prefs", Context.MODE_PRIVATE) }
     private val black = Color.rgb(0, 0, 0)
-    private val card = Color.rgb(18, 18, 18)
-    private val raised = Color.rgb(31, 31, 31)
+    private val card = Color.rgb(17, 17, 17)
+    private val raised = Color.rgb(29, 29, 29)
     private val white = Color.WHITE
     private val grey = Color.rgb(160, 160, 160)
     private val red = Color.rgb(255, 55, 55)
@@ -39,8 +42,12 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
         window.statusBarColor = black
         window.navigationBarColor = black
+        window.decorView.systemUiVisibility = 0
+        controlsVisible = prefs.getBoolean("controls_visible", true)
+        pointerSpeed = prefs.getInt("pointer_speed", 50)
         show("home")
     }
 
@@ -48,20 +55,35 @@ class MainActivity : Activity() {
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(black)
-            setPadding(dp(20), dp(10), dp(20), dp(14))
+            setPadding(dp(18), dp(8), dp(18), dp(8))
         }
         setContentView(root)
-        val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        val brand = label("N O X", 20f, white, true).apply { letterSpacing = 0.14f }
-        header.addView(brand, LinearLayout.LayoutParams(0, dp(48), 1f))
-        header.addView(btn("⚙", false) { show("settings") }, LinearLayout.LayoutParams(dp(54), dp(44)))
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val brand = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        brand.addView(label("PROJECT NOX", 17f, white, true).apply { letterSpacing = 0.12f })
+        brand.addView(label("LINUX ON THE GO", 9f, grey, true).apply { letterSpacing = 0.18f })
+        header.addView(brand, LinearLayout.LayoutParams(0, dp(50), 1f))
+        header.addView(btn("⚙", false) { show("settings") }, LinearLayout.LayoutParams(dp(48), dp(44)))
         root.addView(header)
-        val line = View(this).apply { setBackgroundColor(Color.rgb(48, 48, 48)) }
+
+        val line = View(this).apply { setBackgroundColor(Color.rgb(45, 45, 45)) }
         root.addView(line, LinearLayout.LayoutParams(-1, dp(1)))
-        val scroll = ScrollView(this)
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            clipToPadding = false
+            setPadding(0, dp(8), 0, dp(8))
+        }
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(18), 0, dp(14))
+            setPadding(0, dp(10), 0, dp(16))
         }
         scroll.addView(body)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -73,64 +95,72 @@ class MainActivity : Activity() {
             "session" -> session(body)
             "about" -> about(body)
         }
-        root.addView(label("PROJECT NOX  •  EARLY BUILD", 10f, grey), LinearLayout.LayoutParams(-1, dp(22)))
+        root.addView(label("●  PROJECT NOX  /  EARLY ACCESS", 9f, grey), LinearLayout.LayoutParams(-1, dp(22)))
     }
 
     private fun home(body: LinearLayout) {
-        body.addView(label("YOUR LINUX.\nYOUR POCKET.", 31f, white, true))
+        body.addView(label("YOUR LINUX.\nYOUR POCKET.", 32f, white, true))
         body.addView(space(8))
-        body.addView(label("Ubuntu ARM64  ·  XFCE  ·  No root", 14f, grey))
-        body.addView(space(22))
+        body.addView(label("Ubuntu ARM64  ·  XFCE  ·  No root", 13f, grey))
+        body.addView(space(20))
         val status = column(card, 16)
-        status.addView(label("●  ENVIRONMENT NOT INSTALLED", 12f, red, true))
+        val statusTitle = label("●  APP READY · LINUX NOT INSTALLED", 11f, red, true)
+        status.addView(statusTitle)
         status.addView(space(8))
-        status.addView(label("The app foundation is ready. The Ubuntu runtime and desktop connection are the next stage.", 14f, grey))
+        status.addView(label("The interface is running. The Ubuntu environment and real desktop streaming still need to be added before this app can launch a Linux desktop.", 13f, grey))
         body.addView(status)
         body.addView(space(14))
-        body.addView(btn("INSTALL UBUNTU", true) { toast("Ubuntu installer is planned for the next milestone.") })
-        body.addView(space(9))
-        body.addView(btn("OPEN TOUCH CONTROLS", false) { show("controls") })
-        body.addView(space(9))
+        body.addView(btn("SET UP LINUX", true) { show("session") })
+        body.addView(space(8))
+        body.addView(btn("TOUCH CONTROLS", false) { show("controls") })
+        body.addView(space(8))
         body.addView(btn("DESKTOP SETTINGS", false) { show("settings") })
         body.addView(space(22))
-        body.addView(label("MADE FOR TOUCH", 12f, white, true))
+        body.addView(label("BUILT FOR YOUR PHONE", 11f, white, true))
         body.addView(space(7))
-        body.addView(label("A pocket-sized Linux desktop with an AMOLED-black, monochrome interface and dot-inspired details.", 14f, grey))
+        body.addView(label("AMOLED black, crisp monochrome details, comfortable touch targets and a settings menu designed for small screens.", 13f, grey))
+        body.addView(space(18))
+        val note = column(card, 14)
+        note.addView(label("NEXT MILESTONE", 10f, grey, true))
+        note.addView(space(5))
+        note.addView(label("Connect the Ubuntu ARM64 userspace, graphical desktop and input forwarding.", 13f, white))
+        body.addView(note)
     }
 
     private fun settings(body: LinearLayout) {
-        body.addView(label("Settings", 30f, white, true))
+        body.addView(label("Settings", 29f, white, true))
+        body.addView(space(4))
+        body.addView(label("Tune your Nox experience.", 13f, grey))
+        body.addView(space(18))
+        body.addView(menu("◉", "Touch controls", "Touchpad, click buttons and keyboard") { show("controls") })
+        body.addView(menu("▣", "Display", "Orientation and screen layout") { show("display") })
+        body.addView(menu("◌", "Session", "Linux setup and desktop status") { show("session") })
+        body.addView(menu("i", "About Project Nox", "Version, goals and current status") { show("about") })
+        body.addView(space(14))
+        body.addView(label("VISUAL IDENTITY", 10f, grey, true))
         body.addView(space(5))
-        body.addView(label("Make your desktop feel right.", 14f, grey))
-        body.addView(space(20))
-        body.addView(menu("◉", "Touch controls", "Touchpad, mouse buttons and keyboard") { show("controls") })
-        body.addView(menu("▣", "Display", "Scaling, orientation and pointer visibility") { show("display") })
-        body.addView(menu("◌", "Session", "Start, pause and stop the desktop") { show("session") })
-        body.addView(menu("i", "About Project Nox", "Version and development status") { show("about") })
+        body.addView(label("AMOLED BLACK   /   MONOCHROME   /   DOT INSPIRED", 11f, white))
         body.addView(space(18))
-        body.addView(label("INTERFACE", 11f, grey, true))
-        body.addView(space(6))
-        body.addView(label("AMOLED black  /  Monochrome  /  Dot-inspired", 13f, grey))
-        body.addView(space(18))
-        body.addView(btn("← BACK TO HOME", false) { show("home") })
+        body.addView(btn("←  HOME", false) { show("home") })
     }
 
     private fun controls(body: LinearLayout) {
-        body.addView(label("Touch controls", 28f, white, true))
-        body.addView(space(5))
-        body.addView(label("Use the touch area like a laptop trackpad.", 14f, grey))
+        body.addView(label("Touch controls", 27f, white, true))
+        body.addView(space(4))
+        body.addView(label("A trackpad-style area for testing touch gestures.", 13f, grey))
         body.addView(space(14))
-        body.addView(btn(if (controlsVisible) "HIDE ON-SCREEN CONTROLS" else "SHOW ON-SCREEN CONTROLS", false) {
+        body.addView(btn(if (controlsVisible) "HIDE TOUCHPAD" else "SHOW TOUCHPAD", false) {
             controlsVisible = !controlsVisible
+            prefs.edit().putBoolean("controls_visible", controlsVisible).apply()
             show("controls")
         })
         if (controlsVisible) {
             body.addView(space(10))
             val pad = column(raised, 14).apply { gravity = Gravity.CENTER }
-            pad.addView(label("TOUCHPAD", 11f, grey, true))
-            pad.addView(space(10))
-            pointerLabel = label("●  Touch and move", 15f, white).apply { gravity = Gravity.CENTER }
-            pad.addView(pointerLabel, LinearLayout.LayoutParams(-1, dp(100)))
+            pad.addView(label("TOUCHPAD", 10f, grey, true))
+            body.addView(space(8))
+            pointerLabel = label("Touch and move here", 14f, white).apply { gravity = Gravity.CENTER }
+            pad.addView(pointerLabel, LinearLayout.LayoutParams(-1, dp(94)))
             pad.setOnTouchListener { _, event ->
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
@@ -142,33 +172,35 @@ class MainActivity : Activity() {
                         pointerX += (event.x - lastX) * (pointerSpeed / 50f)
                         pointerY += (event.y - lastY) * (pointerSpeed / 50f)
                         lastX = event.x; lastY = event.y
-                        pointerLabel.text = "X " + pointerX.toInt() + "     Y " + pointerY.toInt()
+                        pointerLabel.text = "X  ${pointerX.toInt()}     Y  ${pointerY.toInt()}"
                         true
                     }
                     MotionEvent.ACTION_UP -> {
                         if (abs(event.x - downX) < dp(8) && abs(event.y - downY) < dp(8)) {
-                            pointerLabel.text = "●  Tap detected"
+                            pointerLabel.text = "●  TAP DETECTED"
                         }
                         true
                     }
                     else -> true
                 }
             }
-            body.addView(pad, LinearLayout.LayoutParams(-1, dp(184)))
-            body.addView(space(9))
+            body.addView(pad, LinearLayout.LayoutParams(-1, dp(158)))
+            body.addView(space(8))
             val clicks = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            clicks.addView(btn("◀  LEFT CLICK", false) { pointerLabel.text = "Left click selected" }, LinearLayout.LayoutParams(0, dp(48), 1f))
+            clicks.addView(btn("◀  LEFT CLICK", false) { pointerLabel.text = "LEFT CLICK · TEST" }, LinearLayout.LayoutParams(0, dp(46), 1f))
             clicks.addView(spaceW(8))
-            clicks.addView(btn("RIGHT CLICK  ▶", false) { pointerLabel.text = "Right click selected" }, LinearLayout.LayoutParams(0, dp(48), 1f))
+            clicks.addView(btn("RIGHT CLICK  ▶", false) { pointerLabel.text = "RIGHT CLICK · TEST" }, LinearLayout.LayoutParams(0, dp(46), 1f))
             body.addView(clicks)
-            body.addView(space(13))
-            body.addView(label("POINTER SPEED  ·  " + pointerSpeed + "%", 12f, grey, true))
+            body.addView(space(14))
+            body.addView(label("POINTER SENSITIVITY  ·  $pointerSpeed%", 11f, grey, true))
             val speed = SeekBar(this).apply {
                 max = 100
                 progress = pointerSpeed
+                contentDescription = "Pointer sensitivity"
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, value: Int, fromUser: Boolean) {
                         pointerSpeed = value.coerceAtLeast(10)
+                        prefs.edit().putInt("pointer_speed", pointerSpeed).apply()
                     }
                     override fun onStartTrackingTouch(seekBar: SeekBar?) {}
                     override fun onStopTrackingTouch(seekBar: SeekBar?) { show("controls") }
@@ -179,51 +211,74 @@ class MainActivity : Activity() {
             body.addView(btn("⌨  OPEN ANDROID KEYBOARD", false) { openKeyboard() })
         }
         body.addView(space(18))
-        body.addView(btn("⚙  CONTROL SETTINGS", false) { show("settings") })
+        body.addView(btn("⚙  SETTINGS", false) { show("settings") })
         body.addView(space(8))
-        body.addView(btn("← BACK", false) { show("home") })
+        body.addView(btn("←  HOME", false) { show("home") })
     }
 
     private fun display(body: LinearLayout) {
-        body.addView(label("Display", 28f, white, true))
-        body.addView(space(8))
-        body.addView(label("These options will be wired to the Linux display backend.", 14f, grey))
+        body.addView(label("Display", 27f, white, true))
+        body.addView(space(5))
+        body.addView(label("These controls affect the Android app shell. Linux display scaling will be connected with the desktop backend.", 13f, grey))
         body.addView(space(18))
-        body.addView(menu("↔", "Fit to screen", "Scale the desktop to your phone") { toast("Display option queued for runtime integration.") })
-        body.addView(menu("⤢", "Landscape mode", "Use a wider desktop layout") { toast("Orientation control is planned.") })
-        body.addView(menu("◉", "Cursor visibility", "Adjust pointer size and contrast") { toast("Cursor settings are planned.") })
-        body.addView(space(16))
-        body.addView(btn("← BACK TO SETTINGS", false) { show("settings") })
+        body.addView(menu("⤢", "Landscape mode", "Rotate the app to a desktop layout") {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            toast("Landscape mode enabled. Rotate back using Android quick settings or reopen Display.")
+        })
+        body.addView(menu("▯", "Portrait mode", "Return to a phone layout") {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            toast("Portrait mode enabled.")
+        })
+        body.addView(menu("↻", "Follow device rotation", "Allow automatic orientation") {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            toast("Automatic orientation enabled.")
+        })
+        body.addView(space(18))
+        body.addView(btn("←  SETTINGS", false) { show("settings") })
     }
 
     private fun session(body: LinearLayout) {
-        body.addView(label("Session", 28f, white, true))
-        body.addView(space(8))
-        body.addView(label("Quick actions for your Linux desktop.", 14f, grey))
+        body.addView(label("Linux setup", 27f, white, true))
+        body.addView(space(6))
+        body.addView(label("Project Nox is being built in milestones. This build does not yet download or start Ubuntu.", 13f, grey))
         body.addView(space(18))
-        body.addView(btn("START DESKTOP", true) { toast("Linux runtime is not connected yet.") })
-        body.addView(space(9))
-        body.addView(btn("PAUSE SESSION", false) { toast("Session controls will be enabled after runtime integration.") })
-        body.addView(space(9))
-        body.addView(btn("STOP SESSION", false) { toast("No Linux session is running.") })
+        val status = column(card, 15)
+        status.addView(label("MILESTONE 01", 10f, grey, true))
+        status.addView(space(6))
+        status.addView(label("Android shell and touch-first settings", 15f, white, true))
+        status.addView(space(5))
+        status.addView(label("Complete: navigation, touchpad demo, persistent sensitivity and orientation settings.", 12f, grey))
+        body.addView(status)
+        body.addView(space(10))
+        val next = column(card, 15)
+        next.addView(label("MILESTONE 02", 10f, red, true))
+        next.addView(space(6))
+        next.addView(label("Ubuntu ARM64 runtime", 15f, white, true))
+        next.addView(space(5))
+        next.addView(label("To do: PRoot bootstrap, safe downloads, extraction progress, start/stop process management and storage checks.", 12f, grey))
+        body.addView(next)
         body.addView(space(18))
-        body.addView(label("The session menu will grow into separate Display, Controls, Linux and Session sections, inspired by handheld desktop launchers.", 14f, grey))
-        body.addView(space(16))
-        body.addView(btn("← BACK TO SETTINGS", false) { show("settings") })
+        body.addView(btn("←  SETTINGS", false) { show("settings") })
     }
 
     private fun about(body: LinearLayout) {
-        body.addView(label("Project Nox", 30f, white, true))
-        body.addView(space(8))
-        body.addView(label("Version 0.1.0 · Initial UI foundation", 14f, grey))
+        body.addView(label("Project Nox", 29f, white, true))
+        body.addView(space(6))
+        body.addView(label("Version 0.2.0 · Touch UI milestone", 13f, grey))
         body.addView(space(18))
-        body.addView(label("GOAL", 11f, grey, true))
-        body.addView(label("A Linux desktop on Android without root, using Ubuntu ARM64 and a clean Nothing OS-inspired interface.", 15f, white))
+        body.addView(label("THE GOAL", 10f, grey, true))
+        body.addView(space(5))
+        body.addView(label("A Linux desktop on Android without root, with Ubuntu ARM64 and a monochrome interface inspired by Nothing OS.", 14f, white))
         body.addView(space(18))
-        body.addView(label("STATUS", 11f, grey, true))
-        body.addView(label("Touch controls currently demonstrate gestures inside the app. Ubuntu/PRoot installation, graphical output, audio and real mouse/keyboard forwarding still need implementation.", 14f, grey))
+        body.addView(label("WHAT WORKS IN THIS BUILD", 10f, grey, true))
+        body.addView(space(5))
+        body.addView(label("• Settings navigation\n• Touchpad gesture demo\n• Saved pointer sensitivity\n• Saved touchpad visibility\n• Portrait, landscape and automatic orientation\n• Android soft keyboard launch", 13f, grey))
         body.addView(space(18))
-        body.addView(btn("← BACK TO SETTINGS", false) { show("settings") })
+        body.addView(label("WHAT IS NOT READY YET", 10f, grey, true))
+        body.addView(space(5))
+        body.addView(label("Ubuntu installation, a real Linux desktop display, Linux mouse/keyboard forwarding and audio. Touch input here is still an app demo, not a remote Linux cursor.", 13f, grey))
+        body.addView(space(18))
+        body.addView(btn("←  SETTINGS", false) { show("settings") })
     }
 
     private fun menu(icon: String, title: String, subtitle: String, action: () -> Unit): View {
@@ -231,19 +286,19 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             background = rounded(card, 14)
-            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setPadding(dp(12), dp(10), dp(12), dp(10))
             isClickable = true
             isFocusable = true
             setOnClickListener { action() }
         }
-        row.addView(label(icon, 22f, white, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(42), dp(48)))
+        row.addView(label(icon, 21f, white, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(40), dp(46)))
         val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        texts.addView(label(title, 15f, white, true))
+        texts.addView(label(title, 14f, white, true))
         texts.addView(space(3))
-        texts.addView(label(subtitle, 12f, grey))
+        texts.addView(label(subtitle, 11f, grey))
         row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-        row.addView(label("›", 24f, grey))
-        row.layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) }
+        row.addView(label("›", 23f, grey))
+        row.layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) }
         return row
     }
 
@@ -263,13 +318,13 @@ class MainActivity : Activity() {
 
     private fun btn(value: String, primary: Boolean, action: () -> Unit): Button = Button(this).apply {
         text = value
-        textSize = 12f
+        textSize = 11f
         isAllCaps = false
         setTextColor(if (primary) black else white)
         background = rounded(if (primary) white else raised, 12)
-        minHeight = dp(46)
-        minimumHeight = dp(46)
-        setPadding(dp(10), dp(8), dp(10), dp(8))
+        minHeight = dp(44)
+        minimumHeight = dp(44)
+        setPadding(dp(9), dp(7), dp(9), dp(7))
         setOnClickListener { action() }
     }
 
@@ -288,12 +343,13 @@ class MainActivity : Activity() {
             setHintTextColor(grey)
             background = rounded(raised, 10)
             setPadding(dp(12), dp(8), dp(12), dp(8))
+            singleLine = true
         }
         root.addView(input, 1, LinearLayout.LayoutParams(-1, dp(48)))
         input.requestFocus()
         (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
             .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
-        toast("Android keyboard opened. Forwarding to Linux comes later.")
+        toast("Android keyboard opened. Linux keyboard forwarding comes in a later milestone.")
     }
 
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
