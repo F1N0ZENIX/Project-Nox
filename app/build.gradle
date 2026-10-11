@@ -12,6 +12,24 @@ android {
         versionCode 2
         versionName '0.2.0'
     }
+    signingConfigs {
+        noxRelease {
+            def keyPath = System.getenv("NOX_KEYSTORE_PATH")
+            if (keyPath != null && !keyPath.isEmpty()) {
+                storeFile file(keyPath)
+                storePassword System.getenv("NOX_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("NOX_KEY_ALIAS")
+                keyPassword System.getenv("NOX_KEY_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            if (System.getenv("NOX_KEYSTORE_PATH") != null) {
+                signingConfig signingConfigs.noxRelease
+            }
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
