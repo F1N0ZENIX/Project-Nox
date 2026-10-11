@@ -83,6 +83,15 @@ jobs:
           echo "filename=Nox release $VERSION.apk" >> "$GITHUB_OUTPUT"
       - name: Build exactly one APK
         run: gradle --no-daemon assembleDebug
+      - name: Verify Ubuntu Base is packaged in the APK
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          if ! unzip -l "$APK" | grep -q 'assets/ubuntu-base-arm64.tar.gz'; then
+            echo "ERROR: Ubuntu Base archive is missing from the APK assets. Refusing to publish an incomplete APK."
+            exit 1
+          fi
+          echo "Verified: Ubuntu Base ARM64 archive is embedded in the APK."
+          unzip -l "$APK" | grep 'assets/ubuntu-base-arm64.tar.gz'
       - name: Rename APK
         run: |
           mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/Nox release ${{ steps.version.outputs.version }}.apk"
