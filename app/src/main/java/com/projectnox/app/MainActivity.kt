@@ -18,6 +18,8 @@ import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowCompat
 import kotlin.math.abs
 
@@ -42,7 +44,8 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        // Draw edge-to-edge, then explicitly keep the app content below system bars/cutouts.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = black
         window.navigationBarColor = black
         window.decorView.systemUiVisibility = 0
@@ -58,6 +61,16 @@ class MainActivity : Activity() {
             setPadding(dp(18), dp(8), dp(18), dp(8))
         }
         setContentView(root)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.statusBars() or
+                    WindowInsetsCompat.Type.navigationBars() or
+                    WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(dp(18), bars.top + dp(8), dp(18), bars.bottom + dp(8))
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
 
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
