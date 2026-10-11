@@ -9,6 +9,7 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/NoxTheme">
+        <activity android:name=".DesktopActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity
             android:name=".UbuntuTerminalActivity"
             android:exported="false"
