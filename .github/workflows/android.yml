@@ -24,10 +24,25 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-      - name: Prepare stable development signing key
+      - name: Prepare stable signing key (optional until repository secrets are configured)
+        env:
+          NOX_KEYSTORE_BASE64: ${{ secrets.NOX_KEYSTORE_BASE64 }}
+          NOX_KEYSTORE_PASSWORD: ${{ secrets.NOX_KEYSTORE_PASSWORD }}
+          NOX_KEY_ALIAS: ${{ secrets.NOX_KEY_ALIAS }}
+          NOX_KEY_PASSWORD: ${{ secrets.NOX_KEY_PASSWORD }}
         run: |
-          mkdir -p .github
-          echo "$(cat .github/nox-dev.keystore.b64)" | base64 --decode > .github/nox-dev.keystore
+          if [ -n "$NOX_KEYSTORE_BASE64" ] && [ -n "$NOX_KEYSTORE_PASSWORD" ] && [ -n "$NOX_KEY_ALIAS" ] && [ -n "$NOX_KEY_PASSWORD" ]; then
+            echo "$NOX_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/nox-release.keystore"
+            {
+              echo "NOX_KEYSTORE_PATH=$RUNNER_TEMP/nox-release.keystore"
+              echo "NOX_KEYSTORE_PASSWORD=$NOX_KEYSTORE_PASSWORD"
+              echo "NOX_KEY_ALIAS=$NOX_KEY_ALIAS"
+              echo "NOX_KEY_PASSWORD=$NOX_KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Stable signing key configured."
+          else
+            echo "::warning::Signing secrets are missing. This APK will use a temporary debug key and may not install over a previous build."
+          fi
       - name: Set increasing version code
         run: |
           python3 - <<'PY'
@@ -35,7 +50,7 @@ jobs:
           path = "app/build.gradle"
           text = open(path, encoding="utf-8").read()
           version_code = 1000 + int(os.environ["GITHUB_RUN_NUMBER"])
-          text, count = re.subn(r"versionCode\\s+\\d+", f"versionCode {version_code}", text, count=1)
+          text, count = re.subn(r"versionCode\s+\d+", f"versionCode {version_code}", text, count=1)
           if count != 1:
               raise SystemExit("Could not update versionCode in app/build.gradle")
           open(path, "w", encoding="utf-8").write(text)
