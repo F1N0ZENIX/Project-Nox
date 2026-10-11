@@ -73,7 +73,14 @@ object UbuntuRuntime {
                                 }
                                 entry.isFile -> {
                                     Files.createDirectories(target.parent)
-                                    FileOutputStream(target.toFile()).use { output -> tar.copyTo(output) }
+                                    FileOutputStream(target.toFile()).use { output ->
+                                        val buffer = ByteArray(32 * 1024)
+                                        while (true) {
+                                            val count = tar.read(buffer)
+                                            if (count < 0) break
+                                            output.write(buffer, 0, count)
+                                        }
+                                    }
                                     val mode = entry.mode
                                     target.toFile().setReadable(mode and 0b100100100 != 0, false)
                                     target.toFile().setWritable(mode and 0b010010010 != 0, false)
