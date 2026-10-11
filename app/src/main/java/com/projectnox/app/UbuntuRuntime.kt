@@ -65,10 +65,15 @@ object UbuntuRuntime {
                                 entry.isSymbolicLink -> {
                                     Files.createDirectories(target.parent)
                                     if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) Files.delete(target)
-                                    Files.createSymbolicLink(target, Paths.get(entry.linkName))
+                                    val rawLink = Paths.get(entry.linkName)
+                                    val safeLink = if (rawLink.isAbsolute) {
+                                        target.parent.relativize(rootPath.resolve(rawLink.toString().trimStart('/')).normalize())
+                                    } else rawLink
+                                    Files.createSymbolicLink(target, safeLink)
                                 }
                                 entry.isLink -> {
-                                    val linkTarget = rootPath.resolve(entry.linkName).normalize()
+                                    val linkName = entry.linkName.removePrefix("/")
+                                    val linkTarget = rootPath.resolve(linkName).normalize()
                                     links.add(target to linkTarget)
                                 }
                                 entry.isFile -> {
