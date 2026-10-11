@@ -167,7 +167,26 @@ object UbuntuRuntime {
         check(runtime.exists() && runtime.canExecute()) {
             "O runtime PRoot não está disponível no APK. Recompile usando o Gradle para incluir os componentes ARM64."
         }
-        val root = rootfs(context).absolutePath
+        val rootFile = rootfs(context)
+        // Ensure sudo exists even for users whose Ubuntu rootfs was installed by an older APK.
+        val sudoFile = File(rootFile, "usr/bin/sudo")
+        sudoFile.parentFile?.mkdirs()
+        if (!sudoFile.exists()) {
+            sudoFile.writeText("#!/bin/sh\n# Project Nox PRoot sessions already run as UID 0.\nwhile [ \"\$#\" -gt 0 ]; do\n  case \"\$1\" in\n    -u|-g|-h|-p|-C|-T) shift; [ \"\$#\" -gt 0 ] && shift ;;\n    -E|-H|-n|-S|-b|-k|-K|-V|--) shift ;;\n    -*) shift ;;\n    *) break ;;\n  esac\ndone\n[ \"\$#\" -eq 0 ] && exit 0\nexec \"\$@\"\n")
+            sudoFile.setReadable(true, false)
+            sudoFile.setWritable(true, true)
+            sudoFile.setExecutable(true, false)
+        }
+        val binSudo = File(rootFile, "bin/sudo")
+        if (!binSudo.exists()) {
+            try { Files.createSymbolicLink(binSudo.toPath(), Paths.get("../usr/bin/sudo")) }
+            catch (_: Exception) {
+                binSudo.writeText(sudoFile.readText())
+                binSudo.setReadable(true, false)
+                binSudo.setExecutable(true, false)
+            }
+        }
+        val root = rootFile.absolutePath
         val command = listOf(
             runtime.absolutePath,
             "-r", root,
