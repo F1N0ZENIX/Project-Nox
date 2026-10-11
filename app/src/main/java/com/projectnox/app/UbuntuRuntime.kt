@@ -161,9 +161,9 @@ object UbuntuRuntime {
             "-0",
             "--link2symlink",
             "-w", "/root",
-            "-b", "/dev",
-            "-b", "/proc",
-            "-b", "/sys",
+            "-b", "/dev:/dev",
+            "-b", "/proc:/proc",
+            "-b", "/sys:/sys",
             "/bin/bash", "--noprofile", "--norc", "-i"
         )
         return ProcessBuilder(command).apply {
