@@ -82,9 +82,9 @@ object UbuntuRuntime {
                                         }
                                     }
                                     val mode = entry.mode
-                                    target.toFile().setReadable(mode and 0b100100100 != 0, false)
-                                    target.toFile().setWritable(mode and 0b010010010 != 0, false)
-                                    target.toFile().setExecutable(mode and 0b001001001 != 0, false)
+                                    target.toFile().setReadable((mode and 0b100100100) != 0, false)
+                                    target.toFile().setWritable((mode and 0b010010010) != 0, false)
+                                    target.toFile().setExecutable((mode and 0b001001001) != 0, false)
                                 }
                             }
                             extracted++
