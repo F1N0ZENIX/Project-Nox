@@ -336,13 +336,12 @@ class MainActivity : Activity() {
         body.addView(space(18))
         body.addView(label("WHAT WORKS IN THIS BUILD", 10f, grey, true))
         body.addView(space(5))
-        body.addView(label("• Settings navigation\n• Touchpad gesture demo\n• Saved pointer sensitivity\n• Saved touchpad visibility\n• Portrait, landscape and automatic orientation\n• Android soft keyboard launch", 13f, grey))
+        body.addView(label("• Offline Ubuntu Base ARM64 bundled in the APK\n• PRoot runtime bundled for ARM64\n• Local Ubuntu extraction and shell launch\n• Interactive Linux command input/output\n• Settings navigation and touch controls", 13f, grey))
         body.addView(space(18))
         body.addView(label("WHAT IS NOT READY YET", 10f, grey, true))
         body.addView(space(5))
-        body.addView(label("Ubuntu installation, a real Linux desktop display, Linux mouse/keyboard forwarding and audio. Touch input here is still an app demo, not a remote Linux cursor.", 13f, grey))
-        body.addView(space(18))
-        body.addView(btn("←  SETTINGS", false) { show("settings") })
+        body.addView(label("XFCE graphical desktop streaming, Linux mouse/keyboard forwarding and audio. The terminal is the first working Linux milestone; it is not yet a graphical desktop.", 13f, grey))
+        body.addView(space(18))        body.addView(btn("←  SETTINGS", false) { show("settings") })
     }
 
     private fun menu(icon: String, title: String, subtitle: String, action: () -> Unit): View {
