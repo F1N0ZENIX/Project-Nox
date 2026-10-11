@@ -31,20 +31,30 @@ Project Nox aims to bring a real Linux desktop environment to Android without re
 - Show/hide touchpad preference, saved between launches.
 - Portrait, landscape and automatic orientation actions.
 - Android soft-keyboard launch.
-- Automated APK compilation, signing, GitHub Release publishing and generated changelog.
+- Automated APK compilation, GitHub Release publishing and generated changelog.
 
 ## Download the latest APK
 
 **[Open Releases and download the latest APK](https://github.com/F1N0ZENIX/Project-Nox/releases/latest).**
 
-Whenever a push to `main` builds successfully, GitHub Actions automatically creates a new Release, attaches `app-debug.apk`, and generates release notes from the changes since the previous release. The Actions artifact is also kept for convenient testing.
+Each successful push to `main` automatically builds the APK, attaches it to a new GitHub Release, and asks GitHub to generate release notes from changes since the previous release. The APK is also uploaded as a temporary Actions artifact.
 
-### Updating Project Nox
+## Updating Project Nox
 
-- Install the newer APK directly over the installed Project Nox; you should not need to uninstall first.
-- The package ID remains `com.projectnox.app`, each automated build receives a higher Android `versionCode`, and the builds use the same **development signing key**.
-- **Important:** the signing key is intentionally included in this public repository only for this prototype, so automatic upgrades work. These APKs are development builds, not secure production releases. Do not reuse this key for a production app or for sensitive distribution.
-- If Android still refuses the update, check that the APK came from this repository's Releases page and that you have not installed a build signed with a different key.
+Android permits installing a newer APK over an existing installation only when the package ID matches and both APKs are signed with the same signing key. Project Nox keeps the package ID `com.projectnox.app` and assigns a higher `versionCode` to every automated build.
+
+**One-time setup needed for reliable updates:** configure a persistent signing key in the repository's GitHub Actions secrets. Without it, the workflow still publishes a test APK, but GitHub's temporary runner signing key can change between builds and Android may refuse an in-place update.
+
+1. Create a signing keystore and keep a secure backup. Do not use a production key for this prototype.
+2. In GitHub, open **Settings → Secrets and variables → Actions → New repository secret**.
+3. Add these four secrets:
+   - `NOX_KEYSTORE_BASE64`: the keystore file encoded as one Base64 string.
+   - `NOX_KEYSTORE_PASSWORD`: the keystore password.
+   - `NOX_KEY_ALIAS`: the key alias.
+   - `NOX_KEY_PASSWORD`: the key password.
+4. Push a new commit to `main`. Subsequent Releases will use that stable signature, allowing compatible newer APKs to install over previous ones.
+
+To encode a keystore file as Base64 on Linux, run `base64 -w 0 nox-release.keystore`. Keep the original keystore and passwords private; anyone with them can sign an APK that Android treats as an update to this app. If you already installed an APK signed with a different key, Android will require uninstalling that older installation before switching signatures.
 
 ## Roadmap
 
@@ -52,8 +62,9 @@ Whenever a push to `main` builds successfully, GitHub Actions automatically crea
 - [x] Touch-first navigation and initial Nox design
 - [x] App-window insets fix for devices using edge-to-edge layouts
 - [x] Launcher icon and improved README
-- [x] Automatic Releases, APK attachment and generated changelog
-- [x] Stable development signature and increasing version codes for in-place updates
+- [x] Automatic Releases, APK attachment and generated release notes
+- [x] Increasing version codes for automated builds
+- [ ] Configure persistent release signing key in repository Actions secrets
 - [ ] Ubuntu ARM64 userspace bootstrap using PRoot
 - [ ] Download/extract progress, cancellation and storage checks
 - [ ] Start/stop lifecycle for the Linux environment
@@ -65,16 +76,13 @@ Whenever a push to `main` builds successfully, GitHub Actions automatically crea
 
 Requirements: JDK 17 and Android SDK platform 35.
 
-The repository stores the prototype development keystore as Base64 text. Decode it before building so the local APK uses the same signature and can be updated by later GitHub Releases:
-
 ```bash
 git clone https://github.com/F1N0ZENIX/Project-Nox.git
 cd Project-Nox
-base64 --decode .github/nox-dev.keystore.b64 > .github/nox-dev.keystore
 gradle --no-daemon assembleDebug
 ```
 
-APK output: `app/build/outputs/apk/debug/app-debug.apk`. Do not publish this development key as a production signing key.
+APK output: `app/build/outputs/apk/debug/app-debug.apk`. A local debug build uses the machine's local debug key unless the signing environment variables are configured.
 
 ## Device target
 
