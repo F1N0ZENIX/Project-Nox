@@ -23,6 +23,7 @@ class DesktopActivity : Activity() {
     private lateinit var content: LinearLayout
     private var shell: Process? = null
     private var writer: BufferedWriter? = null
+    private var desktopOpened = false
     private val black = Color.BLACK
     private val white = Color.WHITE
     private val grey = Color.rgb(165, 165, 165)
@@ -52,7 +53,7 @@ class DesktopActivity : Activity() {
         header.addView(button("CLOSE") { finish() }, LinearLayout.LayoutParams(dp(82), dp(42)))
         root.addView(header)
         root.addView(TextView(this).apply {
-            text = "XFCE WORKSPACE  ·  UBUNTU ARM64"
+            text = "LIGHTWEIGHT XFCE  ·  UBUNTU ARM64"
             textSize = 10f
             setTextColor(grey)
             setPadding(0, dp(4), 0, dp(12))
@@ -62,7 +63,21 @@ class DesktopActivity : Activity() {
             setBackgroundColor(Color.rgb(8, 8, 8))
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
-            webViewClient = WebViewClient()
+            settings.loadsImagesAutomatically = true
+            webViewClient = object : WebViewClient() {
+                override fun onReceivedError(
+                    view: WebView,
+                    request: android.webkit.WebResourceRequest,
+                    error: android.webkit.WebResourceError
+                ) {
+                    if (request.isForMainFrame) runOnUiThread {
+                        if (desktopOpened) {
+                            content.removeAllViews()
+                            content.addView(makeErrorPanel("noVNC could not load. Check that the desktop services are running, then close and retry."))
+                        }
+                    }
+                }
+            }
             webChromeClient = WebChromeClient()
         }
         content = LinearLayout(this).apply {
@@ -85,13 +100,13 @@ class DesktopActivity : Activity() {
             typeface = android.graphics.Typeface.create("sans-serif-medium", 1)
         })
         panel.addView(TextView(this).apply {
-            text = "\nPrepare a real XFCE desktop inside Ubuntu, then open it here through noVNC. First launch downloads the desktop packages."
+            text = "\nInstall a minimal XFCE workspace with no recommended packages. The first setup needs internet; later launches reuse the installed packages."
             textSize = 14f
             setTextColor(grey)
         })
         panel.addView(button("INSTALL & START DESKTOP") { installDesktop() })
         panel.addView(TextView(this).apply {
-            text = "\nRequirements: working internet and several GB of free space. Package installation can take a while."
+            text = "\nLightweight 1024 × 600 desktop, 16-bit color. Keep a few GB free for Ubuntu packages."
             textSize = 12f
             setTextColor(grey)
         })
@@ -113,7 +128,8 @@ class DesktopActivity : Activity() {
             Toast.makeText(this, "Instale o Ubuntu primeiro.", Toast.LENGTH_LONG).show()
             return
         }
-        log.text = "Starting Ubuntu shell…"
+        desktopOpened = false
+        log.text = "Checking desktop packages…"
         Thread {
             try {
                 val p = UbuntuRuntime.startShell(this)
@@ -122,14 +138,26 @@ class DesktopActivity : Activity() {
                 writer = out
                 val commands = listOf(
                     "export DEBIAN_FRONTEND=noninteractive",
-                    "apt-get update && apt-get install -y xfce4 dbus-x11 tigervnc-standalone-server novnc websockify",
+                    "if ! command -v startxfce4 >/dev/null 2>&1 || ! command -v vncserver >/dev/null 2>&1 || ! command -v websockify >/dev/null 2>&1; then apt-get update && apt-get install -y --no-install-recommends xfce4-session xfce4-panel xfwm4 xfdesktop4 xfce4-settings xfconf thunar xfce4-terminal dbus-x11 dbus tigervnc-standalone-server novnc websockify xterm; fi",
+                    "if ! command -v startxfce4 >/dev/null 2>&1 || ! command -v vncserver >/dev/null 2>&1 || ! command -v websockify >/dev/null 2>&1; then echo NOX_INSTALL_FAILED; else echo NOX_PACKAGES_READY; fi",
                     "mkdir -p /root/.vnc",
-                    "printf '%s\\n' '#!/bin/sh' 'unset SESSION_MANAGER' 'unset DBUS_SESSION_BUS_ADDRESS' 'exec dbus-launch --exit-with-session startxfce4' > /root/.vnc/xstartup",
+                    "cat > /root/.vnc/xstartup <<'NOX_XSTARTUP'",
+                    "#!/bin/sh",
+                    "unset SESSION_MANAGER",
+                    "unset DBUS_SESSION_BUS_ADDRESS",
+                    "export XDG_RUNTIME_DIR=/tmp/nox-runtime",
+                    "mkdir -p /tmp/nox-runtime",
+                    "chmod 700 /tmp/nox-runtime",
+                    "exec dbus-launch --exit-with-session startxfce4",
+                    "NOX_XSTARTUP",
                     "chmod +x /root/.vnc/xstartup",
                     "(vncserver -kill :1 >/dev/null 2>&1 || true)",
-                    "vncserver :1 -localhost yes -geometry 1280x720 -depth 24 -SecurityTypes None",
+                    "vncserver :1 -localhost yes -geometry 1024x600 -depth 16 -SecurityTypes None -xstartup /root/.vnc/xstartup",
+                    "sleep 4",
+                    "if ! pgrep -f 'xfce4-session|xfwm4' >/dev/null 2>&1; then echo NOX_XFCE_FAILED; else echo NOX_XFCE_READY; fi",
                     "nohup websockify --web=/usr/share/novnc 127.0.0.1:6080 127.0.0.1:5901 >/tmp/nox-websockify.log 2>&1 &",
-                    "sleep 2; echo NOX_DESKTOP_READY"
+                    "sleep 1",
+                    "if ! pgrep -f 'websockify.*6080' >/dev/null 2>&1; then echo NOX_WEBSOCKIFY_FAILED; else echo NOX_DESKTOP_READY; fi"
                 )
                 commands.forEach { out.write(it + "\n") }
                 out.flush()
@@ -139,24 +167,53 @@ class DesktopActivity : Activity() {
                     runOnUiThread {
                         log.append("\n$line")
                         if (log.lineCount > 120) log.text = log.text.takeLast(8000)
-                        if (line.contains("NOX_DESKTOP_READY")) openDesktop()
+                        when {
+                            line.contains("NOX_INSTALL_FAILED") -> log.append("\nPackage install did not complete. Check internet and retry.")
+                            line.contains("NOX_XFCE_FAILED") -> log.append("\nXFCE did not start. VNC log: /root/.vnc/")
+                            line.contains("NOX_WEBSOCKIFY_FAILED") -> log.append("\nnoVNC WebSocket service did not start.")
+                            line.contains("NOX_DESKTOP_READY") -> openDesktop()
+                        }
                     }
                 }
                 runOnUiThread {
-                    if (p.exitValueOrNull() != 0) log.append("\nShell ended. Check package errors above, then retry.")
+                    if (!desktopOpened) log.append("\nLinux shell ended before the desktop was ready. Review the error above and retry.")
                 }
             } catch (e: Exception) {
                 runOnUiThread { log.append("\nError: ${e.message}") }
             }
         }.start()
-        Toast.makeText(this, "O terminal ficará ocupado enquanto o desktop é preparado.", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "Preparing lightweight XFCE…", Toast.LENGTH_LONG).show()
     }
 
     private fun openDesktop() {
+        if (desktopOpened) return
+        desktopOpened = true
         content.removeAllViews()
         content.addView(web, ViewGroup.LayoutParams(-1, -1))
-        web.loadUrl("http://127.0.0.1:6080/vnc.html?autoconnect=true&resize=remote")
-        log.text = "Opening local desktop…"
+        web.loadUrl("http://127.0.0.1:6080/vnc.html?autoconnect=true&resize=remote&reconnect=true")
+    }
+
+    private fun makeErrorPanel(message: String): ViewGroup {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(20), dp(20), dp(20))
+            setBackgroundColor(black)
+            addView(TextView(this@DesktopActivity).apply {
+                text = "DESKTOP NOT READY"
+                textSize = 20f
+                setTextColor(white)
+            })
+            addView(TextView(this@DesktopActivity).apply {
+                text = message
+                textSize = 14f
+                setTextColor(grey)
+                setPadding(0, dp(12), 0, dp(16))
+            })
+            addView(button("BACK / RETRY") {
+                desktopOpened = false
+                buildUi()
+            })
+        }
     }
 
     private fun button(title: String, action: () -> Unit) = Button(this).apply {
@@ -172,7 +229,6 @@ class DesktopActivity : Activity() {
     }
 
     private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()
-    private fun Process.exitValueOrNull(): Int? = try { exitValue() } catch (_: IllegalThreadStateException) { null }
 
     override fun onDestroy() {
         try { web.destroy() } catch (_: Exception) {}
