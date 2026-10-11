@@ -99,7 +99,7 @@ tasks.register('prepareNoxLinuxRuntime') {
                 setRequestProperty('User-Agent', 'Project-Nox-Android-Build')
                 getInputStream().withCloseable { input -> sumsFile.withOutputStream { output -> input.transferTo(output) } }
             }
-            def line = sumsFile.readLines('UTF-8').find { it.contains(rootfsName) }
+            def line = sumsFile.readLines('UTF-8').find { it.trim().endsWith(rootfsName) }
             if (line == null) throw new GradleException("Ubuntu checksum not found for ${rootfsName}")
             def expected = line.trim().split(/\s+/)[0]
             downloadVerified("https://cdimages.ubuntu.com/ubuntu-base/releases/24.04/release/${rootfsName}", rootfs, expected)
