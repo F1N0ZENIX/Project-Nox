@@ -277,7 +277,8 @@ class MainActivity : Activity() {
     private fun about(body: LinearLayout) {
         body.addView(label("Project Nox", 29f, white, true))
         body.addView(space(6))
-        body.addView(label("Version 0.2.0 · Touch UI milestone", 13f, grey))
+        val appVersion = packageManager.getPackageInfo(packageName, 0).versionName ?: "0.3.0"
+        body.addView(label("Version $appVersion · Touch UI milestone", 13f, grey))
         body.addView(space(18))
         body.addView(label("THE GOAL", 10f, grey, true))
         body.addView(space(5))
