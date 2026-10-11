@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -117,13 +119,23 @@ class MainActivity : Activity() {
         body.addView(label("Ubuntu ARM64  ·  XFCE  ·  No root", 13f, grey))
         body.addView(space(20))
         val status = column(card, 16)
-        val statusTitle = label("●  APP READY · LINUX NOT INSTALLED", 11f, red, true)
-        status.addView(statusTitle)
+        val installed = UbuntuRuntime.isInstalled(this)
+        status.addView(label(
+            if (installed) "●  UBUNTU ARM64 · INSTALLED" else "●  UBUNTU ARM64 · READY TO INSTALL",
+            11f, if (installed) white else red, true
+        ))
         status.addView(space(8))
-        status.addView(label("The interface is running. The Ubuntu environment and real desktop streaming still need to be added before this app can launch a Linux desktop.", 13f, grey))
+        status.addView(label(
+            if (installed) "Ubuntu Base is installed locally. Open the terminal to run Linux commands; a graphical XFCE desktop is the next integration step."
+            else "The APK contains the Ubuntu Base ARM64 archive and Linux runtime. First setup extracts it locally without downloading the root filesystem.",
+            13f, grey
+        ))
         body.addView(status)
         body.addView(space(14))
-        body.addView(btn("SET UP LINUX", true) { show("session") })
+        body.addView(btn(if (installed) "OPEN UBUNTU TERMINAL" else "SET UP UBUNTU OFFLINE", true) {
+            if (installed) startActivity(android.content.Intent(this, UbuntuTerminalActivity::class.java))
+            else show("session")
+        })
         body.addView(space(8))
         body.addView(btn("TOUCH CONTROLS", false) { show("controls") })
         body.addView(space(8))
