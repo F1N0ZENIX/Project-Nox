@@ -39,12 +39,6 @@ android {
     }
     kotlinOptions { jvmTarget = '17' }
     packaging { jniLibs { keepDebugSymbols += ['**/*.so'] } }
-    // Explicitly register the standard Android assets directory used by the runtime task.
-    sourceSets {
-        main {
-            assets.srcDirs = ['src/main/assets']
-        }
-    }
 }
 
 dependencies {
@@ -55,7 +49,8 @@ dependencies {
 // Fetch pinned, checksummed ARM64 runtime components at build time. The Ubuntu
 // rootfs and runtime are packaged in the APK, so first launch needs no rootfs download.
 def runtimeDir = file('src/main/jniLibs/arm64-v8a')
-def assetsDir = file('src/main/assets')
+// Put the generated rootfs in the variant-specific asset source set to avoid main-asset merge/cache issues.
+def assetsDir = file('src/debug/assets')
 def prorootAssets = [
     'libproroot.so'                 : 'a4e74d75b66cdc02b080adfe863dbf9951c3b30610d77beddc95488d5fe5de01',
     'libproroot-bridge.so'          : '1c5bc9537a270e8bf8b1c70222813f57b60b828bfb5503ddf8fe37685092de2f',
