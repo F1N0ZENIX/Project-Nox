@@ -343,7 +343,7 @@ class MainActivity : Activity() {
             setHintTextColor(grey)
             background = rounded(raised, 10)
             setPadding(dp(12), dp(8), dp(12), dp(8))
-            singleLine = true
+            isSingleLine = true
         }
         root.addView(input, 1, LinearLayout.LayoutParams(-1, dp(48)))
         input.requestFocus()
