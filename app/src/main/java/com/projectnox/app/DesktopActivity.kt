@@ -92,13 +92,20 @@ class DesktopActivity : Activity() {
                 val out = BufferedWriter(OutputStreamWriter(p.outputStream))
                 writer = out
                 out.write("export DEBIAN_FRONTEND=noninteractive\n")
-                out.write("apt-get update && apt-get install -y xfce4 dbus-x11 tigervnc-standalone-server novnc websockify && mkdir -p /root/.vnc && printf '#!/bin/sh\\nunset SESSION_MANAGER\\nunset DBUS_SESSION_BUS_ADDRESS\\nexec dbus-launch --exit-with-session startxfce4\\n' > /root/.vnc/xstartup && chmod +x /root/.vnc/xstartup && (vncserver -kill :1 >/dev/null 2>&1 || true) && vncserver :1 -localhost yes -geometry 1280x720 -depth 24 -SecurityTypes None && (pkill -f 'websockify.*6080' >/dev/null 2>&1 || true) && nohup websockify --web=/usr/share/novnc 127.0.0.1:6080 127.0.0.1:5901 >/tmp/nox-websockify.log 2>&1 &\n")
+                out.write("apt-get update && apt-get install -y xfce4 dbus-x11 tigervnc-standalone-server novnc websockify\n")
+                out.write("mkdir -p /root/.vnc\n")
+                out.write("printf '#!/bin/sh\\\\nunset SESSION_MANAGER\\\\nunset DBUS_SESSION_BUS_ADDRESS\\\\nexec dbus-launch --exit-with-session startxfce4\\\\n' > /root/.vnc/xstartup\n")
+                out.write("chmod +x /root/.vnc/xstartup\n")
+                out.write("(vncserver -kill :1 >/dev/null 2>&1 || true)\n")
+                out.write("vncserver :1 -localhost yes -geometry 1280x720 -depth 24 -SecurityTypes None\n")
+                out.write("nohup websockify --web=/usr/share/novnc 127.0.0.1:6080 127.0.0.1:5901 >/tmp/nox-websockify.log 2>&1 &\n")
+                out.write("sleep 2; echo NOX_DESKTOP_READY\n")
                 out.flush()
                 val reader = p.inputStream.bufferedReader()
                 while (true) {
                     val line = reader.readLine() ?: break
                     runOnUiThread { log.append("\n$line"); if (log.lineCount > 120) log.text = log.text.takeLast(8000) }
-                    if (line.contains("Nox desktop ready", true) || line.contains("New Xtigervnc server", true)) {
+                    if (line.contains("NOX_DESKTOP_READY")) {
                         runOnUiThread { openDesktop() }
                     }
                 }
