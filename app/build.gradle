@@ -1,9 +1,9 @@
+import java.security.MessageDigest
+
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
 }
-
-import java.security.MessageDigest
 
 android {
     namespace 'com.projectnox.app'
@@ -12,8 +12,8 @@ android {
         applicationId 'com.projectnox.app'
         minSdk 26
         targetSdk 35
-        versionCode 3
-        versionName '0.3.0'
+        versionCode 4
+        versionName '0.4.0'
     }
     signingConfigs {
         noxRelease {
